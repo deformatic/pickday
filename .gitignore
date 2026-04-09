@@ -40,6 +40,7 @@ yarn-error.log*
 # local agent artifacts
 .playwright-mcp
 .sisyphus
+supabase/.temp
 
 # typescript
 *.tsbuildinfo
