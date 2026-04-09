@@ -1,9 +1,9 @@
 ## 1. 프로젝트 초기화
 
 - [x] 1.1 `npx create-next-app@latest` — App Router, TypeScript, Tailwind CSS
-- [ ] 1.2 Supabase 프로젝트 생성 및 환경변수 설정 (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`)
+- [x] 1.2 Supabase 프로젝트 생성 및 환경변수 설정 (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`)
 - [x] 1.3 `@supabase/supabase-js`, `bcryptjs`, `nanoid` 패키지 설치
-- [ ] 1.4 Vercel 프로젝트 생성 및 GitHub 연결, 환경변수 등록
+- [x] 1.4 Vercel 프로젝트 생성 및 GitHub 연결, 환경변수 등록
 
 ## 2. 데이터베이스 마이그레이션
 
@@ -53,4 +53,4 @@
 - [x] 7.1 Rate Limit 미들웨어 — IP 기반 분당 10회 제한 (Supabase `rate_limit_log` 활용)
 - [x] 7.2 입력 검증 — 모든 API Route Handler에 Zod 스키마 검증 적용
 - [x] 7.3 404 페이지 — 유효하지 않은 토큰 접근 처리
-- [ ] 7.4 Vercel 배포 검증 — 프로덕션 환경변수 확인, 전체 플로우 E2E 테스트
+- [x] 7.4 Vercel 배포 검증 — 프로덕션 환경변수 확인, 전체 플로우 E2E 테스트
