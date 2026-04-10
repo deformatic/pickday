@@ -68,7 +68,7 @@ export async function POST(request: Request) {
         admin_token: adminToken,
         title: parsed.data.title,
         location: parsed.data.location,
-        time_info: parsed.data.timeInfo,
+        time_info: parsed.data.note,
         is_protected: accessPasswordHash !== null,
         access_password_hash: accessPasswordHash,
         admin_password_hash: adminPasswordHash,
@@ -84,8 +84,9 @@ export async function POST(request: Request) {
 
     const optionRows = parsed.data.options.map((option) => ({
       schedule_id: createdSchedule.id,
-      datetime: option.datetime,
-      label: option.label,
+      start_at: option.startAt,
+      end_at: option.endAt,
+      note: option.note,
     }));
 
     const { error: optionError } = await supabase.from("schedule_options").insert(optionRows);

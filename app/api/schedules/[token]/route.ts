@@ -15,8 +15,9 @@ type ScheduleRow = {
   require_phone: boolean;
   schedule_options: Array<{
     id: number;
-    datetime: string;
-    label: string;
+    start_at: string;
+    end_at: string;
+    note: string | null;
   }> | null;
 };
 
@@ -37,7 +38,7 @@ export async function GET(
     const { data, error } = await supabase
       .from("schedules")
       .select(
-        "id, token, title, location, time_info, is_protected, require_email, require_phone, schedule_options(id, datetime, label)",
+        "id, token, title, location, time_info, is_protected, require_email, require_phone, schedule_options(id, start_at, end_at, note)",
       )
       .eq("token", token)
       .single<ScheduleRow>();
@@ -51,13 +52,18 @@ export async function GET(
       token: data.token,
       title: data.title,
       location: data.location,
-      timeInfo: data.time_info,
+      note: data.time_info,
       isProtected: data.is_protected,
       requireEmail: data.require_email,
       requirePhone: data.require_phone,
-      options: [...(data.schedule_options ?? [])].sort((left, right) =>
-        left.datetime.localeCompare(right.datetime),
-      ),
+      options: [...(data.schedule_options ?? [])]
+        .map((option) => ({
+          id: option.id,
+          startAt: option.start_at,
+          endAt: option.end_at,
+          note: option.note,
+        }))
+        .sort((left, right) => left.startAt.localeCompare(right.startAt)),
     };
 
     return NextResponse.json(schedule);

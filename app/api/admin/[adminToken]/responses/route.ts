@@ -13,8 +13,9 @@ type AdminScheduleWithResponses = {
   admin_password_hash: string;
   schedule_options: Array<{
     id: number;
-    label: string;
-    datetime: string;
+    start_at: string;
+    end_at: string;
+    note: string | null;
   }> | null;
   responses: Array<{
     id: number;
@@ -54,7 +55,7 @@ export async function GET(
     const { data, error } = await supabase
       .from("schedules")
       .select(
-        "id, title, location, time_info, admin_password_hash, schedule_options(id, label, datetime), responses(id, name, email, phone, comment, assigned_option_id, created_at, response_selected_options(option_id))",
+        "id, title, location, time_info, admin_password_hash, schedule_options(id, start_at, end_at, note), responses(id, name, email, phone, comment, assigned_option_id, created_at, response_selected_options(option_id))",
       )
       .eq("admin_token", adminToken)
       .single<AdminScheduleWithResponses>();
@@ -69,9 +70,14 @@ export async function GET(
       return NextResponse.json({ error: "Incorrect password" }, { status: 401 });
     }
 
-    const options: AdminScheduleOption[] = [...(data.schedule_options ?? [])].sort((left, right) =>
-      left.datetime.localeCompare(right.datetime),
-    );
+    const options: AdminScheduleOption[] = [...(data.schedule_options ?? [])]
+      .map((option) => ({
+        id: option.id,
+        startAt: option.start_at,
+        endAt: option.end_at,
+        note: option.note,
+      }))
+      .sort((left, right) => left.startAt.localeCompare(right.startAt));
     const optionMap = new Map(options.map((option) => [option.id, option]));
 
     const responses: AdminResponseItem[] = (data.responses ?? []).map((response) => ({
@@ -90,19 +96,20 @@ export async function GET(
     const aggregates: AdminAggregate[] = options
       .map((option) => ({
         optionId: option.id,
-        label: option.label,
-        datetime: option.datetime,
+        startAt: option.startAt,
+        endAt: option.endAt,
+        note: option.note,
         responseCount: responses.filter((response) =>
           response.selectedOptions.some((selectedOption) => selectedOption.id === option.id),
         ).length,
       }))
-      .sort((left, right) => right.responseCount - left.responseCount || left.datetime.localeCompare(right.datetime));
+      .sort((left, right) => right.responseCount - left.responseCount || left.startAt.localeCompare(right.startAt));
 
     const payload: AdminDashboardData = {
       schedule: {
         title: data.title,
         location: data.location,
-        timeInfo: data.time_info,
+        note: data.time_info,
       },
       options,
       responses,
