@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { clearAdminPassword, getAdminPassword } from "@/lib/client/admin-auth";
+import { formatScheduleOptionTitle, formatScheduleOptionWindow } from "@/lib/schedule-options";
 import type { AdminDashboardData } from "@/types/admin";
 
 type AdminDashboardProps = {
@@ -124,12 +125,15 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
       <div className="mx-auto grid max-w-7xl gap-6">
         <section className="rounded-[2rem] border border-stone-900/10 bg-stone-950 px-6 py-8 text-stone-50 shadow-[0_32px_70px_rgba(28,25,23,0.18)] sm:px-8">
           <p className="text-xs tracking-[0.28em] text-stone-400 uppercase">Admin dashboard</p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
+          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] [word-break:keep-all] sm:text-4xl">
             {dashboard?.schedule.title ?? "응답 대시보드"}
           </h1>
-          <p className="mt-3 text-sm leading-7 text-stone-300 sm:text-base">
-            {dashboard ? `${dashboard.schedule.location} · ${dashboard.schedule.timeInfo}` : "응답과 집계를 불러오는 중입니다."}
+          <p className="mt-3 text-sm leading-7 text-stone-300 [word-break:keep-all] sm:text-base">
+            {dashboard ? dashboard.schedule.location : "응답과 집계를 불러오는 중입니다."}
           </p>
+          {dashboard ? (
+            <p className="mt-2 text-sm leading-6 text-stone-300 [word-break:keep-all]">비고: {dashboard.schedule.note}</p>
+          ) : null}
         </section>
 
         {error ? (
@@ -155,8 +159,8 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
                   className="rounded-[1.75rem] border border-stone-200 bg-white/80 p-5 shadow-[0_18px_36px_rgba(120,113,108,0.12)]"
                 >
                   <p className="text-xs tracking-[0.24em] text-stone-500 uppercase">Option</p>
-                  <h2 className="mt-3 text-lg font-semibold text-stone-950">{aggregate.label}</h2>
-                  <p className="mt-1 text-sm text-stone-600">{new Date(aggregate.datetime).toLocaleString("ko-KR")}</p>
+                  <h2 className="mt-3 text-lg font-semibold text-stone-950 [word-break:keep-all]">{formatScheduleOptionTitle(aggregate)}</h2>
+                  <p className="mt-1 text-sm text-stone-600 [word-break:keep-all]">{formatScheduleOptionWindow(aggregate)}</p>
                   <p className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-stone-950">{aggregate.responseCount}</p>
                   <p className="text-sm text-stone-500">응답</p>
                 </article>
@@ -193,7 +197,7 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
                           <p>이메일: {response.email ?? "미입력"}</p>
                           <p>전화번호: {response.phone ?? "미입력"}</p>
                           <p>제출 시각: {new Date(response.createdAt).toLocaleString("ko-KR")}</p>
-                          <p>선택 일정: {response.selectedOptions.map((option) => option.label).join(", ") || "없음"}</p>
+                          <p className="[word-break:keep-all]">선택 일정: {response.selectedOptions.map((option) => formatScheduleOptionTitle(option)).join(" / ") || "없음"}</p>
                           <p>코멘트: {response.comment ?? "없음"}</p>
                         </div>
 
@@ -215,9 +219,9 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
                                   }`}
                                 >
                                   <span>
-                                    <span className="block font-semibold">{option.label}</span>
+                                    <span className="block font-semibold [word-break:keep-all]">{formatScheduleOptionTitle(option)}</span>
                                     <span className={`mt-1 block text-xs ${isAssigned ? "text-stone-300" : "text-stone-500"}`}>
-                                      {new Date(option.datetime).toLocaleString("ko-KR")}
+                                      {formatScheduleOptionWindow(option)}
                                     </span>
                                   </span>
                                   <span className="ml-4 rounded-full border border-current px-3 py-1 text-xs font-medium">

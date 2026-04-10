@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { getProtectedSchedulePassword } from "@/lib/client/protected-schedule";
+import { formatScheduleOptionTitle, formatScheduleOptionWindow } from "@/lib/schedule-options";
 import type { PublicSchedule } from "@/types/schedule";
 
 type ScheduleResponseFormProps = {
@@ -202,9 +203,10 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
             <>
               <div className="border-b border-stone-200 pb-6">
                 <p className="text-xs tracking-[0.26em] text-stone-500 uppercase">Instructor response</p>
-                <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">{schedule.title}</h1>
-                <p className="mt-3 text-sm leading-7 text-stone-600">{schedule.location} · {schedule.timeInfo}</p>
-                <p className="mt-3 text-sm leading-6 text-stone-600">{requiredFieldSummary}</p>
+                <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] [word-break:keep-all] sm:text-4xl">{schedule.title}</h1>
+                <p className="mt-3 text-sm leading-7 text-stone-600 [word-break:keep-all]">{schedule.location}</p>
+                <p className="mt-2 text-sm leading-6 text-stone-600 [word-break:keep-all]">비고: {schedule.note}</p>
+                <p className="mt-3 text-sm leading-6 text-stone-600 [word-break:keep-all]">{requiredFieldSummary}</p>
               </div>
 
               <form onSubmit={handleSubmit} className="mt-6 grid gap-6">
@@ -284,7 +286,7 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <h2 className="text-lg font-semibold text-stone-950">가능 일정 *</h2>
-                      <p className="mt-1 text-sm text-stone-600">복수 선택할 수 있습니다. 터치하기 쉽게 카드 크기를 넉넉하게 잡았습니다.</p>
+                      <p className="mt-1 text-sm text-stone-600 [word-break:keep-all]">복수 선택할 수 있습니다. 터치하기 쉽게 카드 크기를 넉넉하게 잡았습니다.</p>
                     </div>
                     <span className="rounded-full bg-stone-950 px-3 py-1 text-xs font-medium text-stone-50">
                       {selectedOptionIds.length}개 선택
@@ -310,9 +312,11 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
                             <span className={`m-auto h-2.5 w-2.5 rounded-full ${checked ? "bg-stone-950" : "bg-transparent"}`} />
                           </span>
                           <span>
-                            <span className="block text-base font-semibold">{option.label}</span>
+                            <span className="block text-base font-semibold [word-break:keep-all]">
+                              {formatScheduleOptionTitle(option)}
+                            </span>
                             <span className={`mt-1 block text-sm ${checked ? "text-stone-300" : "text-stone-600"}`}>
-                              {new Date(option.datetime).toLocaleString("ko-KR")}
+                              {formatScheduleOptionWindow(option)}
                             </span>
                           </span>
                         </button>
@@ -322,7 +326,7 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
                 </section>
 
                 <label className="grid gap-2">
-                  <span className="text-sm font-medium text-stone-700">코멘트</span>
+                    <span className="text-sm font-medium text-stone-700">코멘트</span>
                   <textarea
                     rows={4}
                     value={comment}
