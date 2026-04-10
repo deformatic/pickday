@@ -1,7 +1,8 @@
 export type AdminScheduleOption = {
   id: number;
-  label: string;
-  datetime: string;
+  startAt: string;
+  endAt: string;
+  note: string | null;
 };
 
 export type AdminResponseItem = {
@@ -17,8 +18,9 @@ export type AdminResponseItem = {
 
 export type AdminAggregate = {
   optionId: number;
-  label: string;
-  datetime: string;
+  startAt: string;
+  endAt: string;
+  note: string | null;
   responseCount: number;
 };
 
@@ -26,7 +28,7 @@ export type AdminDashboardData = {
   schedule: {
     title: string;
     location: string;
-    timeInfo: string;
+    note: string;
   };
   options: AdminScheduleOption[];
   responses: AdminResponseItem[];

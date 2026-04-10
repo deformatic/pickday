@@ -1,7 +1,8 @@
 export type ScheduleOption = {
   id: number;
-  datetime: string;
-  label: string;
+  startAt: string;
+  endAt: string;
+  note: string | null;
 };
 
 export type PublicSchedule = {
@@ -9,7 +10,7 @@ export type PublicSchedule = {
   token: string;
   title: string;
   location: string;
-  timeInfo: string;
+  note: string;
   isProtected: boolean;
   requireEmail: boolean;
   requirePhone: boolean;

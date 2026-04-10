@@ -1,17 +1,17 @@
 import { z } from "zod";
 
 const scheduleOptionSchema = z.object({
-  datetime: z
+  startAt: z
     .string()
     .trim()
-    .min(1, "Datetime is required")
+    .min(1, "Start time is required")
     .transform((value, ctx) => {
       const normalized = new Date(value);
 
       if (Number.isNaN(normalized.getTime())) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Datetime must be a valid date-time value",
+          message: "Start time must be a valid date-time value",
         });
 
         return z.NEVER;
@@ -19,7 +19,33 @@ const scheduleOptionSchema = z.object({
 
       return normalized.toISOString();
     }),
-  label: z.string().trim().min(1, "Label is required").max(200),
+  endAt: z
+    .string()
+    .trim()
+    .min(1, "End time is required")
+    .transform((value, ctx) => {
+      const normalized = new Date(value);
+
+      if (Number.isNaN(normalized.getTime())) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "End time must be a valid date-time value",
+        });
+
+        return z.NEVER;
+      }
+
+      return normalized.toISOString();
+    }),
+  note: z.string().trim().max(300).optional().default(""),
+}).superRefine((value, ctx) => {
+  if (new Date(value.endAt).getTime() <= new Date(value.startAt).getTime()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "End time must be later than start time",
+      path: ["endAt"],
+    });
+  }
 });
 
 const optionalPasswordSchema = z
@@ -32,7 +58,7 @@ const optionalPasswordSchema = z
 export const createScheduleSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(200),
   location: z.string().trim().min(1, "Location is required").max(200),
-  timeInfo: z.string().trim().min(1, "Time info is required").max(500),
+  note: z.string().trim().min(1, "Note is required").max(500),
   adminPassword: z.string().trim().min(1, "Admin password is required").max(100),
   accessPassword: optionalPasswordSchema,
   requireEmail: z.boolean().optional().default(false),
