@@ -10,11 +10,11 @@ export default function NewSchedulePage() {
               Pick Day
             </span>
             <div className="space-y-4">
-              <h1 className="max-w-2xl text-4xl font-semibold tracking-[-0.04em] text-balance sm:text-5xl lg:text-6xl">
+              <h1 className="max-w-2xl text-4xl font-semibold tracking-[-0.04em] text-balance [word-break:keep-all] sm:text-5xl lg:text-6xl">
                 링크 한 번으로 강사 일정 수집을 끝냅니다.
               </h1>
-              <p className="max-w-xl text-sm leading-7 text-stone-300 sm:text-base">
-                교육명, 지역, 시간 정보와 후보 일정을 입력하면 참여 링크와 관리자 링크가 즉시 생성됩니다.
+              <p className="max-w-xl text-sm leading-7 text-stone-300 [word-break:keep-all] sm:text-base">
+                교육명, 지역, 비고와 캘린더 일정 후보를 입력하면 참여 링크와 관리자 링크가 즉시 생성됩니다.
                 모바일 기준으로 빠르게 입력할 수 있도록 한 화면에 필요한 제어만 배치했습니다.
               </p>
             </div>
@@ -29,7 +29,7 @@ export default function NewSchedulePage() {
               <article key={index} className="rounded-[1.5rem] border border-white/10 bg-black/15 p-4">
                 <p className="text-xs tracking-[0.3em] text-stone-400 uppercase">{index}</p>
                 <h2 className="mt-3 text-lg font-medium text-white">{title}</h2>
-                <p className="mt-2 text-sm leading-6 text-stone-300">{description}</p>
+                <p className="mt-2 text-sm leading-6 text-stone-300 [word-break:keep-all]">{description}</p>
               </article>
             ))}
           </div>

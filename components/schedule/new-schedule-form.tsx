@@ -4,8 +4,9 @@ import { useMemo, useState } from "react";
 
 type ScheduleOption = {
   id: string;
-  datetime: string;
-  label: string;
+  startAt: string;
+  endAt: string;
+  note: string;
 };
 
 type SuccessPayload = {
@@ -18,7 +19,7 @@ type SuccessPayload = {
 type FormState = {
   title: string;
   location: string;
-  timeInfo: string;
+  note: string;
   adminPassword: string;
   accessPassword: string;
   isProtected: boolean;
@@ -31,13 +32,13 @@ function createInitialFormState(): FormState {
   return {
     title: "",
     location: "",
-    timeInfo: "",
+    note: "",
     adminPassword: "",
     accessPassword: "",
     isProtected: false,
     requireEmail: false,
     requirePhone: false,
-    options: [{ id: "1", datetime: "", label: "" }],
+    options: [{ id: "1", startAt: "", endAt: "", note: "" }],
   };
 }
 
@@ -176,7 +177,7 @@ export function NewScheduleForm() {
   function addOption() {
     setForm((current) => ({
       ...current,
-      options: [...current.options, { id: String(nextOptionId), datetime: "", label: "" }],
+      options: [...current.options, { id: String(nextOptionId), startAt: "", endAt: "", note: "" }],
     }));
     setNextOptionId((current) => current + 1);
   }
@@ -205,12 +206,12 @@ export function NewScheduleForm() {
         body: JSON.stringify({
           title: form.title,
           location: form.location,
-          timeInfo: form.timeInfo,
+          note: form.note,
           adminPassword: form.adminPassword,
           accessPassword: form.isProtected ? form.accessPassword : undefined,
           requireEmail: form.requireEmail,
           requirePhone: form.requirePhone,
-          options: form.options.map(({ datetime, label }) => ({ datetime, label })),
+          options: form.options.map(({ startAt, endAt, note }) => ({ startAt, endAt, note })),
         }),
       });
 
@@ -248,12 +249,12 @@ export function NewScheduleForm() {
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-stone-200 pb-6">
           <div>
             <p className="text-xs font-medium tracking-[0.25em] text-stone-500 uppercase">Schedule creation</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-stone-950 sm:text-3xl">
-              일정 생성
-            </h2>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-stone-600">
-              후보 일정, 접근 방식, 필수 수집 항목을 한 번에 설정하세요.
-            </p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-stone-950 [word-break:keep-all] sm:text-3xl">
+                일정 생성
+              </h2>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-stone-600 [word-break:keep-all]">
+                후보 일정, 접근 방식, 필수 수집 항목을 한 번에 설정하세요.
+              </p>
           </div>
 
           <div className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-100/70 px-3 py-2 text-xs font-medium text-amber-950">
@@ -289,14 +290,15 @@ export function NewScheduleForm() {
             </label>
 
             <label className="grid gap-2">
-              <span className="text-sm font-medium text-stone-700">시간 정보</span>
-                <input
-                  required
-                  autoComplete="off"
-                  value={form.timeInfo}
-                onChange={(event) => updateField("timeInfo", event.target.value)}
-                className="h-12 rounded-2xl border border-stone-300 bg-stone-50 px-4 text-sm outline-none transition focus:border-stone-950 focus:bg-white"
-                placeholder="예: 오전 10시 ~ 오후 5시"
+              <span className="text-sm font-medium text-stone-700">비고</span>
+              <textarea
+                required
+                autoComplete="off"
+                rows={3}
+                value={form.note}
+                onChange={(event) => updateField("note", event.target.value)}
+                className="rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm outline-none transition focus:border-stone-950 focus:bg-white"
+                placeholder="예: 오전반 강의, 점심 포함, 주차 가능 여부 등"
               />
             </label>
           </div>
@@ -305,7 +307,7 @@ export function NewScheduleForm() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold text-stone-950">일정 후보</h3>
-                <p className="mt-1 text-sm text-stone-600">최소 1개 이상 필요합니다. 필요할 때마다 즉시 추가하세요.</p>
+                <p className="mt-1 text-sm text-stone-600 [word-break:keep-all]">최소 1개 이상 필요합니다. 캘린더 기준으로 시작 시간과 마감 시간을 추가하세요.</p>
               </div>
               <button
                 type="button"
@@ -320,43 +322,56 @@ export function NewScheduleForm() {
               {form.options.map((option, index) => (
                 <div
                   key={option.id}
-                  className="grid gap-3 rounded-[1.5rem] border border-stone-200 bg-white p-4 sm:grid-cols-[1fr_1fr_auto]"
+                  className="grid gap-3 rounded-[1.5rem] border border-stone-200 bg-white p-4 sm:grid-cols-[1fr_1fr]"
                 >
                   <label className="grid gap-2">
-                    <span className="text-sm font-medium text-stone-700">후보 {index + 1} 시간</span>
+                    <span className="text-sm font-medium text-stone-700">캘린더 일정 시작 시간</span>
                     <input
                       type="datetime-local"
                       autoComplete="off"
                       required
-                      value={option.datetime}
-                      onChange={(event) => updateOption(option.id, "datetime", event.target.value)}
+                      value={option.startAt}
+                      onChange={(event) => updateOption(option.id, "startAt", event.target.value)}
                       className="h-11 rounded-2xl border border-stone-300 bg-stone-50 px-4 text-sm outline-none transition focus:border-stone-950 focus:bg-white"
                     />
                   </label>
 
                   <label className="grid gap-2">
-                    <span className="text-sm font-medium text-stone-700">표시 라벨</span>
+                    <span className="text-sm font-medium text-stone-700">캘린더 일정 마감 시간</span>
                     <input
+                      type="datetime-local"
                       required
                       autoComplete="off"
-                      value={option.label}
-                      onChange={(event) => updateOption(option.id, "label", event.target.value)}
+                      min={option.startAt || undefined}
+                      value={option.endAt}
+                      onChange={(event) => updateOption(option.id, "endAt", event.target.value)}
                       className="h-11 rounded-2xl border border-stone-300 bg-stone-50 px-4 text-sm outline-none transition focus:border-stone-950 focus:bg-white"
-                      placeholder="예: 1차 후보 / 4월 11일 토요일"
                     />
                   </label>
 
-                  <div className="flex items-end">
-                    <button
-                      type="button"
-                      onClick={() => removeOption(option.id)}
-                      disabled={form.options.length === 1}
-                      className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-stone-300 text-stone-700 transition hover:border-red-400 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 sm:w-11"
-                      aria-label={`후보 ${index + 1} 삭제`}
-                    >
-                      <TrashIcon />
-                    </button>
-                  </div>
+                  <label className="grid gap-2 sm:col-span-2">
+                    <span className="text-sm font-medium text-stone-700">비고</span>
+                    <div className="flex gap-3">
+                      <textarea
+                        rows={3}
+                        autoComplete="off"
+                        value={option.note}
+                        onChange={(event) => updateOption(option.id, "note", event.target.value)}
+                        className="min-h-24 flex-1 rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm outline-none transition focus:border-stone-950 focus:bg-white"
+                        placeholder="예: 1교시 수업 직후 가능, 오후 회의 전까지 가능 등"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => removeOption(option.id)}
+                        disabled={form.options.length === 1}
+                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center self-end rounded-2xl border border-stone-300 text-stone-700 transition hover:border-red-400 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label={`후보 ${index + 1} 삭제`}
+                      >
+                        <TrashIcon />
+                      </button>
+                    </div>
+                  </label>
                 </div>
               ))}
             </div>
@@ -368,8 +383,8 @@ export function NewScheduleForm() {
                 <ShieldIcon />
               </div>
               <div>
-                <h3 className="text-lg font-semibold">접근 및 수집 설정</h3>
-                <p className="text-sm text-stone-600">일정별 접근 방식과 필수 수집 항목을 선택하세요.</p>
+                <h3 className="text-lg font-semibold [word-break:keep-all]">접근 및 수집 설정</h3>
+                <p className="text-sm text-stone-600 [word-break:keep-all]">일정별 접근 방식과 필수 수집 항목을 선택하세요.</p>
               </div>
             </div>
 
@@ -436,7 +451,7 @@ export function NewScheduleForm() {
           ) : null}
 
           <div className="flex flex-col gap-3 border-t border-stone-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm leading-6 text-stone-600">
+            <p className="text-sm leading-6 text-stone-600 [word-break:keep-all]">
               생성 후 참여 링크와 관리자 링크를 즉시 복사할 수 있습니다.
             </p>
             <button
@@ -453,8 +468,8 @@ export function NewScheduleForm() {
       <aside className="grid gap-6">
         <section className="rounded-[2rem] border border-stone-900/10 bg-white/75 p-5 shadow-[0_24px_50px_rgba(120,113,108,0.12)] backdrop-blur sm:p-6">
           <p className="text-xs font-medium tracking-[0.28em] text-stone-500 uppercase">Preview</p>
-          <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-stone-950">생성 완료 상태</h2>
-          <p className="mt-2 text-sm leading-6 text-stone-600">
+          <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-stone-950 [word-break:keep-all]">생성 완료 상태</h2>
+          <p className="mt-2 text-sm leading-6 text-stone-600 [word-break:keep-all]">
             실제 성공 시 아래 카드에 참여 링크와 관리자 링크가 채워집니다. 운영 중에는 링크를 복사해서 메시지로 바로 공유하면 됩니다.
           </p>
 
@@ -497,7 +512,7 @@ export function NewScheduleForm() {
               "후보 일정은 입력 블록 단위로 추가/삭제할 수 있습니다.",
               "API 오류가 나면 페이지 내 에러 배너로 즉시 표시됩니다.",
             ].map((item) => (
-              <div key={item} className="rounded-[1.4rem] border border-white/10 bg-white/6 px-4 py-3 text-sm leading-6 text-stone-300">
+              <div key={item} className="rounded-[1.4rem] border border-white/10 bg-white/6 px-4 py-3 text-sm leading-6 text-stone-300 [word-break:keep-all]">
                 {item}
               </div>
             ))}
