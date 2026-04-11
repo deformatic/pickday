@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { ScheduleOptionCalendar } from "@/components/schedule/schedule-option-calendar";
+import { FounderNudge } from "@/components/ui/founder-nudge";
 import { getProtectedSchedulePassword } from "@/lib/client/protected-schedule";
 import type { PublicSchedule } from "@/types/schedule";
 
@@ -234,6 +235,12 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
                     {isSubmitting ? "제출 중..." : "응답 제출"}
                   </button>
                 </div>
+
+                <FounderNudge
+                  title="오픈소스 기반으로 운영됩니다"
+                  description="현재 응답 경험은 운영 도구의 일부이며, 필요 시 교육 운영 환경에 맞게 확장할 수 있습니다."
+                  className="bg-stone-50/80"
+                />
               </form>
             </>
           ) : null}

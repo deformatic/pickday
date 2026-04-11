@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { clearAdminPassword, getAdminPassword } from "@/lib/client/admin-auth";
 import { AdminResponseCalendar } from "@/components/admin/admin-response-calendar";
+import { FounderNudge } from "@/components/ui/founder-nudge";
 import { formatScheduleOptionTitle, formatScheduleOptionWindow } from "@/lib/schedule-options";
 import type { AdminDashboardData } from "@/types/admin";
 
@@ -228,6 +229,11 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
         {dashboard ? (
           <>
             <AdminResponseCalendar dashboard={dashboard} />
+
+            <FounderNudge
+              title="교육 운영 맞춤 기능이 더 필요하신가요?"
+              description="강사 배정 자동화, 기관별 브랜딩, 운영 프로세스 확장까지 현재 대시보드 흐름에 맞춰 추가 개발을 진행할 수 있습니다."
+            />
 
             <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               {dashboard.aggregates.map((aggregate) => (
