@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { ScheduleOptionCalendar } from "@/components/schedule/schedule-option-calendar";
 import { getProtectedSchedulePassword } from "@/lib/client/protected-schedule";
-import { formatScheduleOptionTitle, formatScheduleOptionWindow } from "@/lib/schedule-options";
 import type { PublicSchedule } from "@/types/schedule";
 
 type ScheduleResponseFormProps = {
@@ -282,48 +282,11 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
                   </label>
                 </div>
 
-                <section className="rounded-[1.75rem] border border-stone-200 bg-stone-50/80 p-4 sm:p-5">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h2 className="text-lg font-semibold text-stone-950">가능 일정 *</h2>
-                      <p className="mt-1 text-sm text-stone-600 [word-break:keep-all]">복수 선택할 수 있습니다. 터치하기 쉽게 카드 크기를 넉넉하게 잡았습니다.</p>
-                    </div>
-                    <span className="rounded-full bg-stone-950 px-3 py-1 text-xs font-medium text-stone-50">
-                      {selectedOptionIds.length}개 선택
-                    </span>
-                  </div>
-
-                  <div className="mt-4 grid gap-3">
-                    {schedule.options.map((option) => {
-                      const checked = selectedOptionIds.includes(option.id);
-
-                      return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => toggleOption(option.id)}
-                          className={`flex w-full items-start gap-4 rounded-[1.4rem] border p-4 text-left transition ${
-                            checked
-                              ? "border-stone-950 bg-stone-950 text-stone-50 shadow-[0_18px_32px_rgba(28,25,23,0.2)]"
-                              : "border-stone-300 bg-white text-stone-900 hover:border-stone-500"
-                          }`}
-                        >
-                          <span className={`mt-1 inline-flex h-6 w-6 shrink-0 rounded-full border ${checked ? "border-amber-300 bg-amber-300" : "border-stone-400"}`}>
-                            <span className={`m-auto h-2.5 w-2.5 rounded-full ${checked ? "bg-stone-950" : "bg-transparent"}`} />
-                          </span>
-                          <span>
-                            <span className="block text-base font-semibold [word-break:keep-all]">
-                              {formatScheduleOptionTitle(option)}
-                            </span>
-                            <span className={`mt-1 block text-sm ${checked ? "text-stone-300" : "text-stone-600"}`}>
-                              {formatScheduleOptionWindow(option)}
-                            </span>
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
+                <ScheduleOptionCalendar
+                  options={schedule.options}
+                  selectedOptionIds={selectedOptionIds}
+                  onToggle={toggleOption}
+                />
 
                 <label className="grid gap-2">
                     <span className="text-sm font-medium text-stone-700">코멘트</span>
