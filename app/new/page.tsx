@@ -1,4 +1,5 @@
 import { NewScheduleFormClient } from "@/app/new/schedule-form-client";
+import { FounderNudge } from "@/components/ui/founder-nudge";
 
 export default function NewSchedulePage() {
   return (
@@ -36,6 +37,11 @@ export default function NewSchedulePage() {
         </section>
 
         <NewScheduleFormClient />
+
+        <FounderNudge
+          title="교육 운영에 맞는 기능이 더 필요하신가요?"
+          description="회차 운영, 기관별 브랜딩, 관리자 기능 확장까지 현재 워크플로에 맞춘 추가 개발 문의를 받을 수 있습니다."
+        />
       </div>
     </main>
   );

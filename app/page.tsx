@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { FounderNudge } from "@/components/ui/founder-nudge";
+
 const featureCards = [
   {
     title: "Protected / Public",
@@ -83,6 +85,11 @@ export default function HomePage() {
             </article>
           ))}
         </section>
+
+        <FounderNudge
+          title="교육 운영 맞춤 개발 문의"
+          description="교육업체 운영 흐름에 맞춘 기능 확장이나 기관별 커스터마이징이 필요하면 오픈소스 기반으로 빠르게 도와드릴 수 있습니다."
+        />
       </div>
     </main>
   );
