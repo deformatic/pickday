@@ -12,13 +12,6 @@ type ScheduleResponseFormProps = {
   token: string;
 };
 
-type InstructorSuggestion = {
-  id: number;
-  name: string;
-  email: string | null;
-  phone: string | null;
-};
-
 type SubmitResult = {
   responseId: number;
   updated: boolean;
@@ -32,12 +25,10 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [comment, setComment] = useState("");
-  const [suggestions, setSuggestions] = useState<InstructorSuggestion[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -83,50 +74,6 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
     };
   }, [router, token]);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadSuggestions() {
-      if (name.trim().length < 2) {
-        setSuggestions([]);
-        setIsLoadingSuggestions(false);
-        return;
-      }
-
-      setIsLoadingSuggestions(true);
-
-      try {
-        const response = await fetch(`/api/instructors/autocomplete?q=${encodeURIComponent(name.trim())}`);
-        const data = (await response.json()) as InstructorSuggestion[] | { error?: string };
-
-        if (!response.ok) {
-          throw new Error("자동완성 목록을 불러오지 못했습니다.");
-        }
-
-        if (isMounted && Array.isArray(data)) {
-          setSuggestions(data);
-        }
-      } catch {
-        if (isMounted) {
-          setSuggestions([]);
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoadingSuggestions(false);
-        }
-      }
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      void loadSuggestions();
-    }, 180);
-
-    return () => {
-      isMounted = false;
-      window.clearTimeout(timeoutId);
-    };
-  }, [name]);
-
   const requiredFieldSummary = useMemo(() => {
     if (!schedule) {
       return "필수 항목을 확인하는 중입니다.";
@@ -148,13 +95,6 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
         ? current.filter((value) => value !== optionId)
         : [...current, optionId],
     );
-  }
-
-  function applySuggestion(suggestion: InstructorSuggestion) {
-    setName(suggestion.name);
-    setEmail(suggestion.email ?? "");
-    setPhone(suggestion.phone ?? "");
-    setSuggestions([]);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -213,43 +153,14 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="grid gap-2 sm:col-span-2">
                     <span className="text-sm font-medium text-stone-700">이름 *</span>
-                    <div className="relative">
-                      <input
-                        required
-                        autoComplete="name"
-                        value={name}
-                        onChange={(event) => setName(event.target.value)}
-                        className="h-12 w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 text-sm outline-none transition focus:border-stone-950 focus:bg-white"
-                        placeholder="이름을 입력하세요"
-                      />
-
-                      {name.trim().length >= 2 ? (
-                        <div className="absolute inset-x-0 top-[calc(100%+0.5rem)] z-10 overflow-hidden rounded-[1.25rem] border border-stone-200 bg-white shadow-[0_18px_30px_rgba(28,25,23,0.12)]">
-                          {isLoadingSuggestions ? (
-                            <p className="px-4 py-3 text-sm text-stone-500">자동완성 검색 중...</p>
-                          ) : suggestions.length > 0 ? (
-                            <ul className="divide-y divide-stone-100">
-                              {suggestions.map((suggestion) => (
-                                <li key={suggestion.id}>
-                                  <button
-                                    type="button"
-                                    onClick={() => applySuggestion(suggestion)}
-                                    className="flex w-full flex-col gap-1 px-4 py-3 text-left transition hover:bg-stone-50"
-                                  >
-                                    <span className="text-sm font-semibold text-stone-900">{suggestion.name}</span>
-                                    <span className="text-xs text-stone-500">
-                                      {suggestion.email ?? "이메일 없음"} · {suggestion.phone ?? "전화번호 없음"}
-                                    </span>
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p className="px-4 py-3 text-sm text-stone-500">검색 결과가 없습니다.</p>
-                          )}
-                        </div>
-                      ) : null}
-                    </div>
+                    <input
+                      required
+                      autoComplete="name"
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                      className="h-12 w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 text-sm outline-none transition focus:border-stone-950 focus:bg-white"
+                      placeholder="이름을 입력하세요"
+                    />
                   </label>
 
                   <label className="grid gap-2">
