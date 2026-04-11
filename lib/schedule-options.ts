@@ -19,6 +19,15 @@ export function formatScheduleOptionWindow({ startAt, endAt }: ScheduleOptionTim
   return `${formatDateTime(startAt)} ~ ${formatDateTime(endAt)}`;
 }
 
+export function formatScheduleOptionClockRange({ startAt, endAt }: ScheduleOptionTiming) {
+  const formatter = new Intl.DateTimeFormat("ko-KR", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  return `${formatter.format(new Date(startAt))} ~ ${formatter.format(new Date(endAt))}`;
+}
+
 export function formatScheduleOptionTitle({ startAt, endAt, note }: ScheduleOptionTiming) {
   const range = formatScheduleOptionWindow({ startAt, endAt });
 
