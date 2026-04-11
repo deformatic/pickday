@@ -19,6 +19,21 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [assignmentMessage, setAssignmentMessage] = useState<string | null>(null);
 
+  async function refreshDashboard(password: string) {
+    const refreshResponse = await fetch(`/api/admin/${adminToken}/responses`, {
+      headers: {
+        "x-admin-password": password,
+      },
+    });
+    const refreshData = (await refreshResponse.json()) as AdminDashboardData & { error?: string };
+
+    if (!refreshResponse.ok) {
+      throw new Error(refreshData.error ?? "대시보드를 새로고침하지 못했습니다.");
+    }
+
+    setDashboard(refreshData);
+  }
+
   useEffect(() => {
     let isMounted = true;
 
@@ -104,20 +119,79 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
 
       setAssignmentMessage(assignedOptionId === null ? "배정을 해제했습니다." : "배정을 저장했습니다.");
 
-      const refreshResponse = await fetch(`/api/admin/${adminToken}/responses`, {
-        headers: {
-          "x-admin-password": password,
-        },
-      });
-      const refreshData = (await refreshResponse.json()) as AdminDashboardData & { error?: string };
-
-      if (!refreshResponse.ok) {
-        throw new Error(refreshData.error ?? "대시보드를 새로고침하지 못했습니다.");
-      }
-
-      setDashboard(refreshData);
+      await refreshDashboard(password);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "배정 상태를 업데이트하지 못했습니다.");
+    }
+  }
+
+  async function deleteResponse(responseId: number) {
+    const password = getAdminPassword(adminToken);
+
+    if (!password) {
+      router.replace(`/admin/${adminToken}`);
+      return;
+    }
+
+    setAssignmentMessage(null);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/admin/${adminToken}/responses/${responseId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          adminPassword: password,
+        }),
+      });
+
+      const data = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "응답을 삭제하지 못했습니다.");
+      }
+
+      setAssignmentMessage("강사 응답을 삭제했습니다.");
+      await refreshDashboard(password);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "응답을 삭제하지 못했습니다.");
+    }
+  }
+
+  async function removeSelectedOption(responseId: number, optionId: number) {
+    const password = getAdminPassword(adminToken);
+
+    if (!password) {
+      router.replace(`/admin/${adminToken}`);
+      return;
+    }
+
+    setAssignmentMessage(null);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/admin/${adminToken}/responses/${responseId}/options/${optionId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          adminPassword: password,
+        }),
+      });
+
+      const data = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "선택 일정을 제거하지 못했습니다.");
+      }
+
+      setAssignmentMessage("선택 일정을 제거했습니다.");
+      await refreshDashboard(password);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "선택 일정을 제거하지 못했습니다.");
     }
   }
 
@@ -196,11 +270,38 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
                                 배정 완료
                               </span>
                             ) : null}
+                            <button
+                              type="button"
+                              onClick={() => deleteResponse(response.id)}
+                              className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-medium text-red-700 transition hover:border-red-400 hover:bg-red-100"
+                            >
+                              강사 제거
+                            </button>
                           </div>
                           <p>이메일: {response.email ?? "미입력"}</p>
                           <p>전화번호: {response.phone ?? "미입력"}</p>
                           <p>제출 시각: {new Date(response.createdAt).toLocaleString("ko-KR")}</p>
-                          <p className="[word-break:keep-all]">선택 일정: {response.selectedOptions.map((option) => formatScheduleOptionTitle(option)).join(" / ") || "없음"}</p>
+                          <div className="grid gap-2">
+                            <p className="font-medium text-stone-700">선택 일정</p>
+                            {response.selectedOptions.length === 0 ? (
+                              <p className="[word-break:keep-all]">없음</p>
+                            ) : (
+                              <div className="flex flex-wrap gap-2">
+                                {response.selectedOptions.map((option) => (
+                                  <div key={option.id} className="flex items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-2 text-xs text-stone-700 shadow-sm">
+                                    <span className="[word-break:keep-all]">{formatScheduleOptionTitle(option)}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeSelectedOption(response.id, option.id)}
+                                      className="rounded-full border border-red-200 px-2 py-0.5 text-[11px] font-medium text-red-700 transition hover:border-red-400 hover:bg-red-50"
+                                    >
+                                      일자 제거
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                           <p>코멘트: {response.comment ?? "없음"}</p>
                         </div>
 
