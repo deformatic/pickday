@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type ScheduleOption = {
   id: string;
+  dateKey: string;
   startAt: string;
   endAt: string;
   note: string;
@@ -38,8 +39,54 @@ function createInitialFormState(): FormState {
     isProtected: false,
     requireEmail: false,
     requirePhone: false,
-    options: [{ id: "1", startAt: "", endAt: "", note: "" }],
+    options: [],
   };
+}
+
+const weekdayLabels = ["월", "화", "수", "목", "금", "토", "일"];
+
+function formatDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function toDateTimeLocalValue(dateKey: string, hours: number, minutes: number) {
+  return `${dateKey}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function createOptionForDate(id: string, dateKey: string): ScheduleOption {
+  return {
+    id,
+    dateKey,
+    startAt: toDateTimeLocalValue(dateKey, 9, 0),
+    endAt: toDateTimeLocalValue(dateKey, 10, 0),
+    note: "",
+  };
+}
+
+function buildMonthDays(referenceDate: Date) {
+  const monthStart = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1);
+  const monthEnd = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0);
+  const offset = (monthStart.getDay() + 6) % 7;
+  const start = new Date(monthStart);
+  start.setDate(monthStart.getDate() - offset);
+  const end = new Date(monthEnd);
+  end.setDate(monthEnd.getDate() + (6 - ((monthEnd.getDay() + 6) % 7)));
+
+  const days: Array<{ date: Date; inMonth: boolean }> = [];
+  const cursor = new Date(start);
+
+  while (cursor <= end) {
+    days.push({
+      date: new Date(cursor),
+      inMonth: cursor.getMonth() === referenceDate.getMonth(),
+    });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return days;
 }
 
 function PlusIcon() {
@@ -154,12 +201,23 @@ function CopyButton({ value }: { value: string }) {
 
 export function NewScheduleForm() {
   const [form, setForm] = useState<FormState>(() => createInitialFormState());
-  const [nextOptionId, setNextOptionId] = useState(2);
+  const [nextOptionId, setNextOptionId] = useState(1);
   const [success, setSuccess] = useState<SuccessPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [visibleMonth, setVisibleMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
 
   const optionCountLabel = useMemo(() => `${form.options.length}개 일정 후보`, [form.options.length]);
+  const monthDays = useMemo(() => buildMonthDays(visibleMonth), [visibleMonth]);
+
+  useEffect(() => {
+    if (form.options.length === 0) {
+      setError((current) => current);
+    }
+  }, [form.options.length]);
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -174,20 +232,33 @@ export function NewScheduleForm() {
     }));
   }
 
-  function addOption() {
+  function addOptionFromDate(dateKey: string) {
+    const existing = form.options.find((option) => option.dateKey === dateKey);
+
+    if (existing) {
+      const existingElement = document.getElementById(`schedule-option-${existing.id}`);
+      existingElement?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
+    const newId = String(nextOptionId);
+
     setForm((current) => ({
       ...current,
-      options: [...current.options, { id: String(nextOptionId), startAt: "", endAt: "", note: "" }],
+      options: [...current.options, createOptionForDate(newId, dateKey)].sort((left, right) => left.startAt.localeCompare(right.startAt)),
     }));
     setNextOptionId((current) => current + 1);
+
+    requestAnimationFrame(() => {
+      const createdElement = document.getElementById(`schedule-option-${newId}`);
+      createdElement?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
   }
 
   function removeOption(id: string) {
     setForm((current) => ({
       ...current,
-      options: current.options.length === 1
-        ? current.options
-        : current.options.filter((option) => option.id !== id),
+      options: current.options.filter((option) => option.id !== id),
     }));
   }
 
@@ -228,7 +299,7 @@ export function NewScheduleForm() {
         adminUrl: data.adminUrl ?? "",
       });
       setForm(createInitialFormState());
-      setNextOptionId(2);
+      setNextOptionId(1);
     } catch (submissionError) {
       setError(
         submissionError instanceof Error
@@ -307,25 +378,92 @@ export function NewScheduleForm() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold text-stone-950">일정 후보</h3>
-                <p className="mt-1 text-sm text-stone-600 [word-break:keep-all]">최소 1개 이상 필요합니다. 캘린더 기준으로 시작 시간과 마감 시간을 추가하세요.</p>
+                <p className="mt-1 text-sm text-stone-600 [word-break:keep-all]">달력에서 날짜를 눌러 일정 후보를 추가하세요. 클릭한 날짜에 대해서만 시작/마감 시간과 비고를 설정합니다.</p>
               </div>
-              <button
-                type="button"
-                onClick={addOption}
-                className="inline-flex h-11 items-center gap-2 rounded-full border border-stone-900/10 bg-white px-4 text-sm font-medium text-stone-900 shadow-sm transition hover:border-stone-950"
-              >
-                <PlusIcon /> 후보 추가
-              </button>
+            </div>
+
+            <div className="mt-4 rounded-[1.5rem] border border-stone-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}
+                  className="inline-flex h-10 items-center justify-center rounded-full border border-stone-300 px-3 text-sm font-medium text-stone-700 transition hover:border-stone-950 hover:text-stone-950"
+                >
+                  이전 달
+                </button>
+                <p className="text-sm font-semibold text-stone-950">
+                  {new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long" }).format(visibleMonth)}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}
+                  className="inline-flex h-10 items-center justify-center rounded-full border border-stone-300 px-3 text-sm font-medium text-stone-700 transition hover:border-stone-950 hover:text-stone-950"
+                >
+                  다음 달
+                </button>
+              </div>
+
+              <div className="mt-4 grid grid-cols-7 gap-2 text-center text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
+                {weekdayLabels.map((weekday) => (
+                  <div key={weekday} className="py-2">{weekday}</div>
+                ))}
+              </div>
+
+              <div className="mt-2 grid grid-cols-7 gap-2">
+                {monthDays.map(({ date, inMonth }) => {
+                  const dateKey = formatDateKey(date);
+                  const isSelected = form.options.some((option) => option.dateKey === dateKey);
+
+                  return (
+                    <button
+                      key={date.toISOString()}
+                      type="button"
+                      onClick={() => addOptionFromDate(dateKey)}
+                      className={`min-h-20 rounded-[1.2rem] border p-2 text-left transition ${
+                        isSelected
+                          ? "border-stone-950 bg-stone-950 text-stone-50 shadow-[0_18px_32px_rgba(28,25,23,0.18)]"
+                          : inMonth
+                            ? "border-stone-200 bg-stone-50 text-stone-900 hover:border-stone-950 hover:bg-white"
+                            : "border-stone-200 bg-stone-100/70 text-stone-400"
+                      }`}
+                    >
+                      <span className="block text-sm font-semibold">{date.getDate()}</span>
+                      <span className={`mt-2 block text-[11px] leading-4 ${isSelected ? "text-stone-300" : "text-stone-500"}`}>
+                        {isSelected ? "추가됨" : "클릭해서 일정 추가"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="mt-4 grid gap-3">
+              {form.options.length === 0 ? (
+                <div className="rounded-[1.5rem] border border-dashed border-stone-300 bg-white px-4 py-5 text-sm text-stone-500">
+                  아직 추가된 일정 후보가 없습니다. 위 달력에서 날짜를 눌러 후보를 만드세요.
+                </div>
+              ) : null}
+
               {form.options.map((option, index) => (
                 <div
                   key={option.id}
+                  id={`schedule-option-${option.id}`}
                   className="grid gap-3 rounded-[1.5rem] border border-stone-200 bg-white p-4 sm:grid-cols-[1fr_1fr]"
                 >
+                  <div className="sm:col-span-2 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-stone-950">후보 {index + 1}</p>
+                      <p className="mt-1 text-xs text-stone-500">
+                        {new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "short" }).format(new Date(option.startAt))}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-stone-100 px-3 py-1 text-[11px] font-medium text-stone-700">
+                      {option.dateKey}
+                    </span>
+                  </div>
+
                   <label className="grid gap-2">
-                    <span className="text-sm font-medium text-stone-700">캘린더 일정 시작 시간</span>
+                    <span className="text-sm font-medium text-stone-700">일정 시작 시간</span>
                     <input
                       type="datetime-local"
                       autoComplete="off"
@@ -337,7 +475,7 @@ export function NewScheduleForm() {
                   </label>
 
                   <label className="grid gap-2">
-                    <span className="text-sm font-medium text-stone-700">캘린더 일정 마감 시간</span>
+                    <span className="text-sm font-medium text-stone-700">일정 마감 시간</span>
                     <input
                       type="datetime-local"
                       required
