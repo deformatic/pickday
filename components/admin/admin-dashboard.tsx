@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { clearAdminPassword, getAdminPassword } from "@/lib/client/admin-auth";
+import { AdminResponseCalendar } from "@/components/admin/admin-response-calendar";
 import { formatScheduleOptionTitle, formatScheduleOptionWindow } from "@/lib/schedule-options";
 import type { AdminDashboardData } from "@/types/admin";
 
@@ -152,6 +153,8 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
 
         {dashboard ? (
           <>
+            <AdminResponseCalendar dashboard={dashboard} />
+
             <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               {dashboard.aggregates.map((aggregate) => (
                 <article
