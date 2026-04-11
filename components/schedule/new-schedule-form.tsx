@@ -428,9 +428,9 @@ export function NewScheduleForm() {
                       }`}
                     >
                       <span className="block text-sm font-semibold">{date.getDate()}</span>
-                      <span className={`mt-2 block text-[11px] leading-4 ${isSelected ? "text-stone-300" : "text-stone-500"}`}>
-                        {isSelected ? "추가됨" : "클릭해서 일정 추가"}
-                      </span>
+                      {isSelected ? (
+                        <span className="mt-2 block text-[11px] leading-4 text-stone-300">추가됨</span>
+                      ) : null}
                     </button>
                   );
                 })}
