@@ -8,11 +8,14 @@ export type ScheduleOption = {
 export type PublicSchedule = {
   id: number;
   token: string;
-  title: string;
-  location: string;
-  note: string;
   isProtected: boolean;
   requireEmail: boolean;
   requirePhone: boolean;
+};
+
+export type VerifiedScheduleDetails = PublicSchedule & {
+  title: string;
+  location: string;
+  note: string;
   options: ScheduleOption[];
 };

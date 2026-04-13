@@ -1,6 +1,6 @@
 import { ScheduleAccessGate } from "@/components/schedule/schedule-access-gate";
 
-export default async function ScheduleGatePage({
+export default async function ScheduleVerifyPage({
   params,
 }: {
   params: Promise<{ token: string }>;

@@ -67,7 +67,7 @@ export function ScheduleAccessGate({ token }: AccessGateProps) {
     setError(null);
 
     try {
-      const response = await fetch(`/api/schedules/${token}/verify`, {
+      const verifyResponse = await fetch(`/api/schedules/${token}/verify`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -75,10 +75,10 @@ export function ScheduleAccessGate({ token }: AccessGateProps) {
         body: JSON.stringify({ password }),
       });
 
-      const data = (await response.json()) as { error?: string };
+      const verifyData = (await verifyResponse.json()) as { error?: string };
 
-      if (!response.ok) {
-        throw new Error(data.error ?? "비밀번호 확인에 실패했습니다.");
+      if (!verifyResponse.ok) {
+        throw new Error(verifyData.error ?? "비밀번호 확인에 실패했습니다.");
       }
 
       setPassword("");
@@ -99,26 +99,14 @@ export function ScheduleAccessGate({ token }: AccessGateProps) {
             일정 참여 전에 비밀번호를 확인합니다.
           </h1>
           <p className="mt-3 text-sm leading-7 text-stone-300 [word-break:keep-all] sm:text-base">
-            Protected 모드 일정은 참여 비밀번호를 통과한 뒤 응답 폼으로 이동합니다.
+            Protected 모드 일정은 참여 비밀번호를 통과한 뒤 응답 폼과 상세 일정 정보를 확인할 수 있습니다.
           </p>
 
           {isLoading ? <p className="mt-8 text-sm text-stone-400">일정 정보를 확인하는 중...</p> : null}
-
-          {schedule ? (
-            <div className="mt-8 rounded-[1.75rem] border border-white/10 bg-black/20 p-5">
-              <p className="text-xs tracking-[0.22em] text-stone-400 uppercase">Schedule</p>
-              <h2 className="mt-3 text-2xl font-semibold text-white [word-break:keep-all]">{schedule.title}</h2>
-              <dl className="mt-4 grid gap-3 text-sm text-stone-300 sm:grid-cols-2">
-                <div>
-                  <dt className="text-stone-400">지역</dt>
-                  <dd className="mt-1 text-stone-100">{schedule.location}</dd>
-                </div>
-                <div>
-                  <dt className="text-stone-400">비고</dt>
-                  <dd className="mt-1 text-stone-100 [word-break:keep-all]">{schedule.note}</dd>
-                </div>
-              </dl>
-            </div>
+          {schedule?.isProtected ? (
+            <p className="mt-8 rounded-[1.4rem] border border-white/10 bg-black/20 px-4 py-3 text-sm text-stone-200">
+              보호된 일정은 검증 전까지 제목, 장소, 시간 옵션이 숨겨집니다.
+            </p>
           ) : null}
         </section>
 
