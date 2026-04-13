@@ -3,8 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { setAdminPassword } from "@/lib/client/admin-auth";
-
 type AdminAccessFormProps = {
   adminToken: string;
 };
@@ -35,7 +33,6 @@ export function AdminAccessForm({ adminToken }: AdminAccessFormProps) {
         throw new Error(data.error ?? "관리자 인증에 실패했습니다.");
       }
 
-      setAdminPassword(adminToken, password);
       router.push(`/admin/${adminToken}/dashboard`);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "관리자 인증에 실패했습니다.");
@@ -50,7 +47,7 @@ export function AdminAccessForm({ adminToken }: AdminAccessFormProps) {
         <p className="text-xs tracking-[0.28em] text-stone-400 uppercase">Admin access</p>
         <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">관리자 비밀번호를 입력하세요.</h1>
         <p className="mt-3 text-sm leading-7 text-stone-300 sm:text-base">
-          별도 세션 없이 현재 브라우저 탭에서만 대시보드 접근용 비밀번호를 보관합니다.
+          인증 성공 시 짧은 만료 시간의 보안 토큰이 발급되어 대시보드 API 요청에 자동으로 사용됩니다.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 grid gap-4">

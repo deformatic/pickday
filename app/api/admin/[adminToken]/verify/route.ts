@@ -1,6 +1,10 @@
 import { compare } from "bcryptjs";
 import { NextResponse } from "next/server";
 
+import {
+  ADMIN_AUTH_COOKIE_NAME,
+  issueAdminAuthToken,
+} from "@/lib/admin-auth-token";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { adminTokenParamSchema } from "@/lib/validation/routes";
 import { verifySchedulePasswordSchema } from "@/lib/validation/responses";
@@ -53,7 +57,23 @@ export async function POST(
       return NextResponse.json({ error: "Incorrect password" }, { status: 401 });
     }
 
-    return NextResponse.json({ verified: true });
+    const authToken = issueAdminAuthToken(adminToken);
+    const response = NextResponse.json({
+      verified: true,
+      expiresAt: new Date(authToken.expiresAt * 1000).toISOString(),
+    });
+
+    response.cookies.set({
+      name: ADMIN_AUTH_COOKIE_NAME,
+      value: authToken.token,
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      path: "/",
+      maxAge: authToken.ttlSeconds,
+    });
+
+    return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected server error";
 

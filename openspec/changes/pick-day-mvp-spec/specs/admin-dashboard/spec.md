@@ -1,11 +1,11 @@
 ## ADDED Requirements
 
 ### Requirement: 관리자 인증
-관리자 링크(`/admin/{adminToken}`)에 접근할 때 관리자 비밀번호를 입력하여 인증한다. 세션 없이 각 접근마다 토큰+비밀번호로 검증한다.
+관리자 링크(`/admin/{adminToken}`)에 접근할 때 관리자 비밀번호를 입력하여 인증한다. 인증 성공 시 짧은 TTL의 서명 토큰을 발급하고, 이후 관리자 API는 비밀번호 대신 해당 토큰으로 검증한다.
 
 #### Scenario: 올바른 관리자 비밀번호 입력
 - **WHEN** 관리자가 `adminToken`과 일치하는 비밀번호를 입력하면
-- **THEN** 관리자 대시보드가 표시된다
+- **THEN** 짧은 TTL의 서명 토큰(HTTP-only, Secure, SameSite=Strict)이 발급되고 관리자 대시보드가 표시된다
 
 #### Scenario: 잘못된 관리자 비밀번호
 - **WHEN** 잘못된 비밀번호를 입력하면

@@ -40,8 +40,8 @@
 
 ## 6. 관리자 대시보드 (admin-dashboard)
 
-- [x] 6.1 `POST /api/admin/[adminToken]/verify` — 관리자 비밀번호 검증
-- [x] 6.2 `GET /api/admin/[adminToken]/responses` — 응답 목록 + 일정별 집계 조회
+- [x] 6.1 `POST /api/admin/[adminToken]/verify` — 관리자 비밀번호 검증 + 단기 서명 토큰 발급
+- [x] 6.2 `GET /api/admin/[adminToken]/responses` — 응답 목록 + 일정별 집계 조회 (서명 토큰 검증)
 - [x] 6.3 `PATCH /api/admin/[adminToken]/responses/[responseId]` — 강사 배정 (`assigned_option_id` 업데이트)
 - [x] 6.4 관리자 인증 페이지 (`/admin/[adminToken]`) — 비밀번호 입력 폼
 - [x] 6.5 대시보드 페이지 (`/admin/[adminToken]/dashboard`) — 응답 목록 테이블 UI
