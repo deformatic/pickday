@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { getAdminSessionCookieName, verifyAdminSessionToken } from "@/lib/server/auth-session";
+import { enforceRateLimit } from "@/lib/api/rate-limit";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { adminTokenParamSchema } from "@/lib/validation/routes";
 import type { AdminAggregate, AdminDashboardData, AdminResponseItem, AdminScheduleOption } from "@/types/admin";
@@ -30,7 +31,7 @@ type AdminScheduleWithResponses = {
 };
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ adminToken: string }> },
 ) {
   try {
@@ -48,6 +49,17 @@ export async function GET(
     }
 
     const supabase = createSupabaseAdminClient();
+    const rateLimit = await enforceRateLimit({
+      request,
+      supabase,
+      maxRequests: 30,
+      windowMs: 60_000,
+    });
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "Too many requests from this client. Try again later." }, { status: 429 });
+    }
+
     const { data, error } = await supabase
       .from("schedules")
       .select(

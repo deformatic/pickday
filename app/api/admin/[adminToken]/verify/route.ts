@@ -1,6 +1,7 @@
 import { compare } from "bcryptjs";
 import { NextResponse } from "next/server";
 
+import { createScopedRateLimitBucketKey, enforceRateLimit, extractClientIp } from "@/lib/api/rate-limit";
 import {
   createAdminSessionToken,
   getAdminSessionCookieName,
@@ -42,6 +43,37 @@ export async function POST(
 
     const { adminToken } = parsedParams.data;
     const supabase = createSupabaseAdminClient();
+    const clientIp = extractClientIp(request);
+    const globalRateLimit = await enforceRateLimit({
+      request,
+      supabase,
+      maxRequests: 8,
+      windowMs: 60_000,
+      clientIpInfo: clientIp,
+    });
+
+    if (!globalRateLimit.allowed) {
+      return NextResponse.json({ error: "Too many verification attempts. Try again later." }, { status: 429 });
+    }
+
+    const tokenRateLimit = await enforceRateLimit({
+      request,
+      supabase,
+      maxRequests: 8,
+      windowMs: 60_000,
+      clientIpInfo: clientIp,
+      bucketKey: createScopedRateLimitBucketKey({
+        request,
+        scope: "admin_verify",
+        subjectKey: adminToken,
+        clientIpInfo: clientIp,
+      }),
+    });
+
+    if (!tokenRateLimit.allowed) {
+      return NextResponse.json({ error: "Too many verification attempts. Try again later." }, { status: 429 });
+    }
+
     const { data, error } = await supabase
       .from("schedules")
       .select("admin_token, admin_password_hash")
