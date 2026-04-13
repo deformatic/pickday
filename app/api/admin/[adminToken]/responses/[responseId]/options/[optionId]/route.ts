@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { writeResponseAuditLog } from "@/lib/api/response-audit-log";
 import { getAdminSessionCookieName, verifyAdminSessionToken } from "@/lib/server/auth-session";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { responseOptionRouteParamSchema } from "@/lib/validation/routes";
@@ -85,6 +86,14 @@ export async function DELETE(
         return NextResponse.json({ error: "Failed to clear assignment for removed option" }, { status: 500 });
       }
     }
+
+    await writeResponseAuditLog({
+      supabase,
+      responseId,
+      action: "admin_selected_option_delete",
+      actorType: "admin_token",
+      actorIdentifier: adminToken,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

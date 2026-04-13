@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { writeResponseAuditLog } from "@/lib/api/response-audit-log";
 import { getAdminSessionCookieName, verifyAdminSessionToken } from "@/lib/server/auth-session";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { responseRouteParamSchema } from "@/lib/validation/routes";
@@ -105,6 +106,14 @@ export async function PATCH(
       return NextResponse.json({ error: "Failed to update assignment" }, { status: 500 });
     }
 
+    await writeResponseAuditLog({
+      supabase,
+      responseId,
+      action: "admin_assignment_update",
+      actorType: "admin_token",
+      actorIdentifier: adminToken,
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected server error";
@@ -152,12 +161,22 @@ export async function DELETE(
       return NextResponse.json({ error: "Response not found for this schedule" }, { status: 404 });
     }
 
+    const auditLogId = await writeResponseAuditLog({
+      supabase,
+      responseId,
+      action: "admin_response_delete",
+      actorType: "admin_token",
+      actorIdentifier: adminToken,
+    });
+
     const { error: deleteError } = await supabase
       .from("responses")
       .delete()
       .eq("id", responseId);
 
     if (deleteError) {
+      await supabase.from("response_audit_logs").delete().eq("id", auditLogId);
+
       return NextResponse.json({ error: "Failed to delete response" }, { status: 500 });
     }
 
