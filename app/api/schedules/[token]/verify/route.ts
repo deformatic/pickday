@@ -1,6 +1,7 @@
 import { compare } from "bcryptjs";
 import { NextResponse } from "next/server";
 
+import { enforceRateLimit } from "@/lib/api/rate-limit";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { tokenParamSchema } from "@/lib/validation/routes";
 import { verifySchedulePasswordSchema } from "@/lib/validation/responses";
@@ -10,6 +11,17 @@ type ProtectedScheduleRow = {
   is_protected: boolean;
   access_password_hash: string | null;
 };
+
+const VERIFY_FAILURE_ERROR = "Unable to verify credentials";
+
+function createFailureResponse(status: number) {
+  return NextResponse.json({ error: VERIFY_FAILURE_ERROR }, { status });
+}
+
+async function applyRandomDelay() {
+  const delayMs = 300 + Math.floor(Math.random() * 501);
+  await new Promise((resolve) => setTimeout(resolve, delayMs));
+}
 
 export async function POST(
   request: Request,
@@ -39,6 +51,23 @@ export async function POST(
     const { token } = parsedParams.data;
     const supabase = createSupabaseAdminClient();
 
+    const rateLimit = await enforceRateLimit({
+      request,
+      supabase,
+      maxRequests: 5,
+      windowMs: 60_000,
+      subjectType: "schedule_verify",
+      subjectKey: token,
+      countStatus: "failure",
+      record: false,
+    });
+
+    if (!rateLimit.allowed) {
+      await applyRandomDelay();
+
+      return createFailureResponse(429);
+    }
+
     const { data, error } = await supabase
       .from("schedules")
       .select("token, is_protected, access_password_hash")
@@ -46,27 +75,69 @@ export async function POST(
       .single<ProtectedScheduleRow>();
 
     if (error || !data) {
-      return NextResponse.json({ error: "Schedule not found" }, { status: 404 });
+      await enforceRateLimit({
+        request,
+        supabase,
+        maxRequests: 1,
+        windowMs: 1,
+        subjectType: "schedule_verify",
+        subjectKey: token,
+        skipCheck: true,
+        status: "failure",
+      });
+
+      return createFailureResponse(401);
     }
 
     if (!data.is_protected) {
+      await enforceRateLimit({
+        request,
+        supabase,
+        maxRequests: 1,
+        windowMs: 1,
+        subjectType: "schedule_verify",
+        subjectKey: token,
+        skipCheck: true,
+        status: "success",
+      });
+
       return NextResponse.json({ verified: true });
     }
 
     if (!data.access_password_hash) {
-      return NextResponse.json({ error: "Schedule password is not configured" }, { status: 500 });
+      await enforceRateLimit({
+        request,
+        supabase,
+        maxRequests: 1,
+        windowMs: 1,
+        subjectType: "schedule_verify",
+        subjectKey: token,
+        skipCheck: true,
+        status: "failure",
+      });
+
+      return createFailureResponse(401);
     }
 
     const verified = await compare(parsed.data.password, data.access_password_hash);
 
+    await enforceRateLimit({
+      request,
+      supabase,
+      maxRequests: 1,
+      windowMs: 1,
+      subjectType: "schedule_verify",
+      subjectKey: token,
+      skipCheck: true,
+      status: verified ? "success" : "failure",
+    });
+
     if (!verified) {
-      return NextResponse.json({ error: "Incorrect password" }, { status: 401 });
+      return createFailureResponse(401);
     }
 
     return NextResponse.json({ verified: true });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected server error";
-
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return createFailureResponse(500);
   }
 }
