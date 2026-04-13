@@ -1,12 +1,12 @@
-import { compare } from "bcryptjs";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { getAdminSessionCookieName, verifyAdminSessionToken } from "@/lib/server/auth-session";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { responseRouteParamSchema } from "@/lib/validation/routes";
 
 const assignScheduleOptionSchema = z.object({
-  adminPassword: z.string().trim().min(1, "Admin password is required").max(100),
   assignedOptionId: z.number().int().positive().nullable(),
 });
 
@@ -17,7 +17,6 @@ type ResponseOwnerRow = {
 
 type AdminScheduleRow = {
   id: number;
-  admin_password_hash: string;
 };
 
 export async function PATCH(
@@ -46,21 +45,21 @@ export async function PATCH(
     }
 
     const { adminToken, responseId } = parsedParams.data;
+    const sessionToken = (await cookies()).get(getAdminSessionCookieName(adminToken))?.value;
+
+    if (!sessionToken || !verifyAdminSessionToken(sessionToken, adminToken)) {
+      return NextResponse.json({ error: "Admin session is required" }, { status: 401 });
+    }
+
     const supabase = createSupabaseAdminClient();
     const { data: schedule, error: scheduleError } = await supabase
       .from("schedules")
-      .select("id, admin_password_hash")
+      .select("id")
       .eq("admin_token", adminToken)
       .single<AdminScheduleRow>();
 
     if (scheduleError || !schedule) {
       return NextResponse.json({ error: "Admin schedule not found" }, { status: 404 });
-    }
-
-    const verified = await compare(parsed.data.adminPassword, schedule.admin_password_hash);
-
-    if (!verified) {
-      return NextResponse.json({ error: "Incorrect password" }, { status: 401 });
     }
 
     const { data: response, error: responseError } = await supabase
@@ -115,25 +114,9 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ adminToken: string; responseId: string }> },
 ) {
-  let payload: unknown;
-
-  try {
-    payload = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Request body must be valid JSON" }, { status: 400 });
-  }
-
-  const parsed = z.object({
-    adminPassword: z.string().trim().min(1, "Admin password is required").max(100),
-  }).safeParse(payload);
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid delete payload" }, { status: 400 });
-  }
-
   try {
     const parsedParams = responseRouteParamSchema.safeParse(await params);
 
@@ -142,21 +125,21 @@ export async function DELETE(
     }
 
     const { adminToken, responseId } = parsedParams.data;
+    const sessionToken = (await cookies()).get(getAdminSessionCookieName(adminToken))?.value;
+
+    if (!sessionToken || !verifyAdminSessionToken(sessionToken, adminToken)) {
+      return NextResponse.json({ error: "Admin session is required" }, { status: 401 });
+    }
+
     const supabase = createSupabaseAdminClient();
     const { data: schedule, error: scheduleError } = await supabase
       .from("schedules")
-      .select("id, admin_password_hash")
+      .select("id")
       .eq("admin_token", adminToken)
       .single<AdminScheduleRow>();
 
     if (scheduleError || !schedule) {
       return NextResponse.json({ error: "Admin schedule not found" }, { status: 404 });
-    }
-
-    const verified = await compare(parsed.data.adminPassword, schedule.admin_password_hash);
-
-    if (!verified) {
-      return NextResponse.json({ error: "Incorrect password" }, { status: 401 });
     }
 
     const { data: response, error: responseError } = await supabase

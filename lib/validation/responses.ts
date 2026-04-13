@@ -16,7 +16,6 @@ export const createScheduleResponseSchema = z.object({
   email: z.string().trim().email("Email must be valid").max(200).optional().or(z.literal("")),
   phone: z.string().trim().max(40).optional().or(z.literal("")),
   comment: optionalStringSchema,
-  accessPassword: z.string().trim().max(100).optional(),
   selectedOptionIds: z.array(z.number().int().positive()).min(1, "Select at least one option"),
 });
 

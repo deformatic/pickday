@@ -1,6 +1,11 @@
 import { compare } from "bcryptjs";
 import { NextResponse } from "next/server";
 
+import {
+  createAdminSessionToken,
+  getAdminSessionCookieName,
+  getSessionCookieOptions,
+} from "@/lib/server/auth-session";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { adminTokenParamSchema } from "@/lib/validation/routes";
 import { verifySchedulePasswordSchema } from "@/lib/validation/responses";
@@ -47,13 +52,22 @@ export async function POST(
       return NextResponse.json({ error: "Admin schedule not found" }, { status: 404 });
     }
 
-    const verified = await compare(parsed.data.password, data.admin_password_hash);
+    let password = parsed.data.password;
+    const verified = await compare(password, data.admin_password_hash);
+    password = "";
 
     if (!verified) {
       return NextResponse.json({ error: "Incorrect password" }, { status: 401 });
     }
 
-    return NextResponse.json({ verified: true });
+    const response = NextResponse.json({ verified: true });
+    response.cookies.set(
+      getAdminSessionCookieName(adminToken),
+      createAdminSessionToken(adminToken),
+      getSessionCookieOptions(),
+    );
+
+    return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected server error";
 

@@ -1,8 +1,9 @@
-import { compare } from "bcryptjs";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
 import { enforceRateLimit } from "@/lib/api/rate-limit";
+import { getScheduleSessionCookieName, verifyScheduleSessionToken } from "@/lib/server/auth-session";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { tokenParamSchema } from "@/lib/validation/routes";
 import { createScheduleResponseSchema } from "@/lib/validation/responses";
@@ -11,7 +12,6 @@ type ResponseScheduleRow = {
   id: number;
   token: string;
   is_protected: boolean;
-  access_password_hash: string | null;
   require_email: boolean;
   require_phone: boolean;
   schedule_options: Array<{ id: number }> | null;
@@ -145,7 +145,7 @@ export async function POST(
 
     const { data: schedule, error: scheduleError } = await supabase
       .from("schedules")
-      .select("id, token, is_protected, access_password_hash, require_email, require_phone, schedule_options(id)")
+      .select("id, token, is_protected, require_email, require_phone, schedule_options(id)")
       .eq("token", token)
       .single<ResponseScheduleRow>();
 
@@ -165,14 +165,10 @@ export async function POST(
     }
 
     if (schedule.is_protected) {
-      if (!parsed.data.accessPassword || !schedule.access_password_hash) {
-        return NextResponse.json({ error: "Schedule password is required" }, { status: 401 });
-      }
+      const sessionToken = (await cookies()).get(getScheduleSessionCookieName(token))?.value;
 
-      const verified = await compare(parsed.data.accessPassword, schedule.access_password_hash);
-
-      if (!verified) {
-        return NextResponse.json({ error: "Incorrect schedule password" }, { status: 401 });
+      if (!sessionToken || !verifyScheduleSessionToken(sessionToken, token)) {
+        return NextResponse.json({ error: "Schedule session is required" }, { status: 401 });
       }
     }
 

@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import { ScheduleOptionCalendar } from "@/components/schedule/schedule-option-calendar";
 import { FounderNudge } from "@/components/ui/founder-nudge";
-import { getProtectedSchedulePassword } from "@/lib/client/protected-schedule";
 import type { PublicSchedule } from "@/types/schedule";
 
 type ScheduleResponseFormProps = {
@@ -51,10 +50,6 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
         }
 
         setSchedule(data);
-
-        if (data.isProtected && !getProtectedSchedulePassword(token)) {
-          router.replace(`/s/${token}`);
-        }
       } catch (requestError) {
         if (!isMounted) {
           return;
@@ -115,7 +110,6 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
           email,
           phone,
           comment,
-          accessPassword: schedule?.isProtected ? getProtectedSchedulePassword(token) ?? undefined : undefined,
           selectedOptionIds,
         }),
       });
@@ -123,6 +117,11 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
       const data = (await response.json()) as SubmitResult & { error?: string };
 
       if (!response.ok) {
+        if (response.status === 401) {
+          router.push(`/s/${token}`);
+          return;
+        }
+
         throw new Error(data.error ?? "응답 제출에 실패했습니다.");
       }
 
@@ -165,7 +164,7 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
                   </label>
 
                   <label className="grid gap-2">
-                    <span className="text-sm font-medium text-stone-700">
+                  <span className="text-sm font-medium text-stone-700">
                       이메일{schedule.requireEmail ? " *" : ""}
                     </span>
                     <input
@@ -180,7 +179,7 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
                   </label>
 
                   <label className="grid gap-2">
-                    <span className="text-sm font-medium text-stone-700">
+                  <span className="text-sm font-medium text-stone-700">
                       전화번호{schedule.requirePhone ? " *" : ""}
                     </span>
                     <input
@@ -201,7 +200,7 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
                 />
 
                 <label className="grid gap-2">
-                    <span className="text-sm font-medium text-stone-700">코멘트</span>
+                  <span className="text-sm font-medium text-stone-700">코멘트</span>
                   <textarea
                     rows={4}
                     value={comment}
