@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { writeResponseAuditLog } from "@/lib/api/response-audit-log";
 import { getAdminSessionCookieName, verifyAdminSessionToken } from "@/lib/server/auth-session";
+import { enforceRateLimit } from "@/lib/api/rate-limit";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { responseOptionRouteParamSchema } from "@/lib/validation/routes";
 
@@ -17,7 +18,7 @@ type ResponseOwnerRow = {
 };
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ adminToken: string; responseId: string; optionId: string }> },
 ) {
   try {
@@ -35,6 +36,17 @@ export async function DELETE(
     }
 
     const supabase = createSupabaseAdminClient();
+    const rateLimit = await enforceRateLimit({
+      request,
+      supabase,
+      maxRequests: 20,
+      windowMs: 60_000,
+    });
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "Too many admin actions from this client. Try again later." }, { status: 429 });
+    }
+
     const { data: schedule, error: scheduleError } = await supabase
       .from("schedules")
       .select("id")
