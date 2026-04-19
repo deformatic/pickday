@@ -14,7 +14,6 @@ type AdminScheduleRow = {
 type ResponseOwnerRow = {
   id: number;
   schedule_id: number;
-  assigned_option_id: number | null;
 };
 
 export async function DELETE(
@@ -59,7 +58,7 @@ export async function DELETE(
 
     const { data: response, error: responseError } = await supabase
       .from("responses")
-      .select("id, schedule_id, assigned_option_id")
+      .select("id, schedule_id")
       .eq("id", responseId)
       .single<ResponseOwnerRow>();
 
@@ -88,15 +87,14 @@ export async function DELETE(
       return NextResponse.json({ error: "Failed to remove selected option" }, { status: 500 });
     }
 
-    if (response.assigned_option_id === optionId) {
-      const { error: clearAssignmentError } = await supabase
-        .from("responses")
-        .update({ assigned_option_id: null })
-        .eq("id", responseId);
+    const { error: clearAssignmentError } = await supabase
+      .from("response_assigned_options")
+      .delete()
+      .eq("response_id", responseId)
+      .eq("option_id", optionId);
 
-      if (clearAssignmentError) {
-        return NextResponse.json({ error: "Failed to clear assignment for removed option" }, { status: 500 });
-      }
+    if (clearAssignmentError) {
+      return NextResponse.json({ error: "Failed to clear assignment for removed option" }, { status: 500 });
     }
 
     await writeResponseAuditLog({

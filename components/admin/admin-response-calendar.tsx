@@ -21,7 +21,9 @@ function buildOptionSummaries(dashboard: AdminDashboardData): CalendarOptionSumm
     const selectingResponses = dashboard.responses.filter((response) =>
       response.selectedOptions.some((selectedOption) => selectedOption.id === option.id),
     );
-    const assignedResponses = dashboard.responses.filter((response) => response.assignedOptionId === option.id);
+    const assignedResponses = dashboard.responses.filter((response) =>
+      response.assignedOptions.some((assignedOption) => assignedOption.id === option.id),
+    );
 
     return {
       ...option,
