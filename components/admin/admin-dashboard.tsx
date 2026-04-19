@@ -12,12 +12,46 @@ type AdminDashboardProps = {
   adminToken: string;
 };
 
+type PendingAssignment = {
+  responseId: number;
+  optionId: number;
+  nextAssignedOptionId: number | null;
+};
+
+function applyOptimisticAssignment(
+  dashboard: AdminDashboardData,
+  responseId: number,
+  assignedOptionId: number | null,
+): AdminDashboardData {
+  return {
+    ...dashboard,
+    responses: dashboard.responses.map((response) => {
+      if (response.id === responseId) {
+        return {
+          ...response,
+          assignedOptionId,
+        };
+      }
+
+      if (assignedOptionId !== null && response.assignedOptionId === assignedOptionId) {
+        return {
+          ...response,
+          assignedOptionId: null,
+        };
+      }
+
+      return response;
+    }),
+  };
+}
+
 export function AdminDashboard({ adminToken }: AdminDashboardProps) {
   const router = useRouter();
   const [dashboard, setDashboard] = useState<AdminDashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [assignmentMessage, setAssignmentMessage] = useState<string | null>(null);
+  const [pendingAssignment, setPendingAssignment] = useState<PendingAssignment | null>(null);
 
   async function refreshDashboard() {
     const refreshResponse = await fetch(`/api/admin/${adminToken}/responses`);
@@ -73,8 +107,32 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
   }, [adminToken, router]);
 
   async function assignOption(responseId: number, assignedOptionId: number | null) {
+    if (!dashboard || pendingAssignment) {
+      return;
+    }
+
     setAssignmentMessage(null);
     setError(null);
+    const currentResponse = dashboard.responses.find((response) => response.id === responseId);
+
+    if (!currentResponse) {
+      return;
+    }
+
+    const optionId = assignedOptionId ?? currentResponse.assignedOptionId;
+
+    if (optionId === null) {
+      return;
+    }
+
+    const previousDashboard = dashboard;
+    let assignmentPersisted = false;
+    setPendingAssignment({
+      responseId,
+      optionId,
+      nextAssignedOptionId: assignedOptionId,
+    });
+    setDashboard(applyOptimisticAssignment(dashboard, responseId, assignedOptionId));
 
     try {
       const response = await fetch(`/api/admin/${adminToken}/responses/${responseId}`, {
@@ -93,11 +151,24 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
         throw new Error(data.error ?? "배정 상태를 업데이트하지 못했습니다.");
       }
 
+      assignmentPersisted = true;
       setAssignmentMessage(assignedOptionId === null ? "배정을 해제했습니다." : "배정을 저장했습니다.");
 
       await refreshDashboard();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "배정 상태를 업데이트하지 못했습니다.");
+      if (!assignmentPersisted) {
+        setDashboard(previousDashboard);
+      }
+
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : assignmentPersisted
+            ? "배정은 저장됐지만 최신 상태를 다시 불러오지 못했습니다."
+            : "배정 상태를 업데이트하지 못했습니다.",
+      );
+    } finally {
+      setPendingAssignment(null);
     }
   }
 
@@ -271,17 +342,22 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
                           <div className="grid gap-2">
                             {dashboard.options.map((option) => {
                               const isAssigned = response.assignedOptionId === option.id;
+                              const isPendingTarget =
+                                pendingAssignment?.responseId === response.id && pendingAssignment.optionId === option.id;
+                              const isAssignmentLocked = pendingAssignment !== null;
 
                               return (
                                 <button
                                   key={option.id}
                                   type="button"
                                   onClick={() => assignOption(response.id, isAssigned ? null : option.id)}
+                                  disabled={isAssignmentLocked}
+                                  aria-busy={isPendingTarget}
                                   className={`flex items-center justify-between rounded-[1.25rem] border px-4 py-3 text-left text-sm transition ${
                                     isAssigned
                                       ? "border-stone-950 bg-stone-950 text-stone-50"
                                       : "border-stone-300 bg-white text-stone-900 hover:border-stone-950"
-                                  }`}
+                                  } ${isAssignmentLocked ? "cursor-wait opacity-70" : ""}`}
                                 >
                                   <span>
                                     <span className="block font-semibold [word-break:keep-all]">{formatScheduleOptionTitle(option)}</span>
@@ -290,7 +366,13 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
                                     </span>
                                   </span>
                                   <span className="ml-4 rounded-full border border-current px-3 py-1 text-xs font-medium">
-                                    {isAssigned ? "배정 해제" : "배정"}
+                                    {isPendingTarget
+                                      ? pendingAssignment.nextAssignedOptionId === null
+                                        ? "해제 중..."
+                                        : "저장 중..."
+                                      : isAssigned
+                                        ? "배정 해제"
+                                        : "배정"}
                                   </span>
                                 </button>
                               );
