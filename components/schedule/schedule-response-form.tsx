@@ -1,24 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { ScheduleOptionCalendar } from "@/components/schedule/schedule-option-calendar";
 import { FounderNudge } from "@/components/ui/founder-nudge";
 import type { PublicSchedule, VerifiedScheduleDetails } from "@/types/schedule";
 
+type SubmitResult = {
+  responseId: number;
+  updated?: boolean;
+  editUrl?: string;
+};
+
 type ScheduleResponseFormProps = {
   token: string;
 };
 
-type SubmitResult = {
-  responseId: number;
-  updated: boolean;
-};
-
 export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [schedule, setSchedule] = useState<VerifiedScheduleDetails | null>(null);
   const [selectedOptionIds, setSelectedOptionIds] = useState<number[]>([]);
   const [name, setName] = useState("");
@@ -29,6 +31,10 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const editToken = searchParams.get("editToken") ?? "";
+  const editResponseId = searchParams.get("responseId") ?? "";
+  const isEditMode = Boolean(editToken && editResponseId);
 
   useEffect(() => {
     let isMounted = true;
@@ -112,8 +118,13 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`/api/schedules/${token}/responses`, {
-        method: "POST",
+      const endpoint = isEditMode
+        ? `/api/schedules/${token}/responses/${editResponseId}`
+        : `/api/schedules/${token}/responses`;
+      const method = isEditMode ? "PATCH" : "POST";
+
+      const response = await fetch(endpoint, {
+        method,
         headers: {
           "Content-Type": "application/json",
         },
@@ -122,11 +133,12 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
           email,
           phone,
           comment,
+          editToken: isEditMode ? editToken : undefined,
           selectedOptionIds,
         }),
       });
 
-      const data = (await response.json()) as SubmitResult & { error?: string };
+      const data = (await response.json()) as SubmitResult & { error?: string; code?: string };
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -134,10 +146,18 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
           return;
         }
 
+        if (response.status === 409 || data.code === "DUPLICATE_IDENTIFIER") {
+          throw new Error("이미 동일한 이름/연락처로 제출된 응답이 있습니다. 기존 응답 수정 링크를 사용해 주세요.");
+        }
+
         throw new Error(data.error ?? "응답 제출에 실패했습니다.");
       }
 
       setResult(data);
+
+      if (data.editUrl) {
+        router.replace(data.editUrl);
+      }
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "응답 제출에 실패했습니다.");
     } finally {
@@ -159,6 +179,11 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
                 <p className="mt-3 text-sm leading-7 text-stone-600 [word-break:keep-all]">{schedule.location}</p>
                 <p className="mt-2 text-sm leading-6 text-stone-600 [word-break:keep-all]">비고: {schedule.note}</p>
                 <p className="mt-3 text-sm leading-6 text-stone-600 [word-break:keep-all]">{requiredFieldSummary}</p>
+                {isEditMode ? (
+                  <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                    수정 링크로 접속했습니다. 제출 시 새로운 수정 링크로 자동 회전됩니다.
+                  </p>
+                ) : null}
               </div>
 
               <form onSubmit={handleSubmit} className="mt-6 grid gap-6">
@@ -176,7 +201,7 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
                   </label>
 
                   <label className="grid gap-2">
-                  <span className="text-sm font-medium text-stone-700">
+                    <span className="text-sm font-medium text-stone-700">
                       이메일{schedule.requireEmail ? " *" : ""}
                     </span>
                     <input
@@ -191,7 +216,7 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
                   </label>
 
                   <label className="grid gap-2">
-                  <span className="text-sm font-medium text-stone-700">
+                    <span className="text-sm font-medium text-stone-700">
                       전화번호{schedule.requirePhone ? " *" : ""}
                     </span>
                     <input
@@ -230,7 +255,10 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
 
                 {result ? (
                   <div className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                    {result.updated ? "기존 응답을 최신 내용으로 수정했습니다." : "응답이 정상적으로 제출되었습니다."}
+                    {result.updated ? "응답이 수정되었고, 수정 링크가 갱신되었습니다." : "응답이 정상적으로 제출되었습니다. 수정 링크를 안전하게 보관해 주세요."}
+                    {result.editUrl ? (
+                      <p className="mt-2 break-all text-xs text-emerald-700">수정 링크: {result.editUrl}</p>
+                    ) : null}
                   </div>
                 ) : null}
 
@@ -243,7 +271,7 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
                     disabled={isSubmitting || isLoading}
                     className="inline-flex h-12 items-center justify-center rounded-full bg-stone-950 px-6 text-sm font-semibold text-stone-50 transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-400"
                   >
-                    {isSubmitting ? "제출 중..." : "응답 제출"}
+                    {isSubmitting ? "제출 중..." : isEditMode ? "응답 수정" : "응답 제출"}
                   </button>
                 </div>
 

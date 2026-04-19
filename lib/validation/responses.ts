@@ -11,7 +11,7 @@ const optionalStringSchema = z
   .transform((value) => (value.length > 0 ? value : undefined))
   .optional();
 
-export const createScheduleResponseSchema = z.object({
+const baseScheduleResponseSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
   email: z.string().trim().email("Email must be valid").max(200).optional().or(z.literal("")),
   phone: z.string().trim().max(40).optional().or(z.literal("")),
@@ -19,4 +19,11 @@ export const createScheduleResponseSchema = z.object({
   selectedOptionIds: z.array(z.number().int().positive()).min(1, "Select at least one option"),
 });
 
+export const createScheduleResponseSchema = baseScheduleResponseSchema;
+
+export const updateScheduleResponseSchema = baseScheduleResponseSchema.extend({
+  editToken: z.string().trim().min(1, "Edit token is required").max(255),
+});
+
 export type CreateScheduleResponseInput = z.infer<typeof createScheduleResponseSchema>;
+export type UpdateScheduleResponseInput = z.infer<typeof updateScheduleResponseSchema>;
