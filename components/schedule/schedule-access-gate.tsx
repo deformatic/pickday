@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { clearProtectedSchedulePassword, setProtectedSchedulePassword } from "@/lib/client/protected-schedule";
 import type { PublicSchedule } from "@/types/schedule";
 
 type AccessGateProps = {
@@ -39,8 +38,6 @@ export function ScheduleAccessGate({ token }: AccessGateProps) {
         }
 
         setSchedule(data);
-        clearProtectedSchedulePassword(token);
-
         if (!data.isProtected) {
           router.replace(`/s/${token}/respond`);
         }
@@ -84,7 +81,7 @@ export function ScheduleAccessGate({ token }: AccessGateProps) {
         throw new Error(data.error ?? "비밀번호 확인에 실패했습니다.");
       }
 
-      setProtectedSchedulePassword(token, password);
+      setPassword("");
       router.push(`/s/${token}/respond`);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "비밀번호 확인에 실패했습니다.");
@@ -128,7 +125,7 @@ export function ScheduleAccessGate({ token }: AccessGateProps) {
         <section className="rounded-[2rem] border border-white/10 bg-stone-50 p-6 text-stone-900 shadow-[0_24px_50px_rgba(0,0,0,0.22)] sm:p-8">
           <h2 className="text-2xl font-semibold tracking-[-0.03em]">비밀번호 입력</h2>
           <p className="mt-2 text-sm leading-6 text-stone-600 [word-break:keep-all]">
-            관리자에게 받은 참여 비밀번호를 입력하면 응답 페이지로 이동합니다.
+            관리자에게 받은 참여 비밀번호를 검증하면 단기 세션 토큰으로 응답 페이지에 접근합니다.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-6 grid gap-4">

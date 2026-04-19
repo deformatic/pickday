@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { clearAdminPassword, getAdminPassword } from "@/lib/client/admin-auth";
 import { AdminResponseCalendar } from "@/components/admin/admin-response-calendar";
 import { FounderNudge } from "@/components/ui/founder-nudge";
 import { formatScheduleOptionTitle, formatScheduleOptionWindow } from "@/lib/schedule-options";
@@ -20,12 +19,8 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [assignmentMessage, setAssignmentMessage] = useState<string | null>(null);
 
-  async function refreshDashboard(password: string) {
-    const refreshResponse = await fetch(`/api/admin/${adminToken}/responses`, {
-      headers: {
-        "x-admin-password": password,
-      },
-    });
+  async function refreshDashboard() {
+    const refreshResponse = await fetch(`/api/admin/${adminToken}/responses`);
     const refreshData = (await refreshResponse.json()) as AdminDashboardData & { error?: string };
 
     if (!refreshResponse.ok) {
@@ -39,28 +34,16 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
     let isMounted = true;
 
     async function loadDashboard() {
-      const password = getAdminPassword(adminToken);
-
-      if (!password) {
-        router.replace(`/admin/${adminToken}`);
-        return;
-      }
-
       setIsLoading(true);
       setError(null);
 
       try {
-        const response = await fetch(`/api/admin/${adminToken}/responses`, {
-          headers: {
-            "x-admin-password": password,
-          },
-        });
+        const response = await fetch(`/api/admin/${adminToken}/responses`);
 
         const data = (await response.json()) as AdminDashboardData & { error?: string };
 
         if (!response.ok) {
           if (response.status === 401 && isMounted) {
-            clearAdminPassword(adminToken);
             router.replace(`/admin/${adminToken}`);
             return;
           }
@@ -90,13 +73,6 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
   }, [adminToken, router]);
 
   async function assignOption(responseId: number, assignedOptionId: number | null) {
-    const password = getAdminPassword(adminToken);
-
-    if (!password) {
-      router.replace(`/admin/${adminToken}`);
-      return;
-    }
-
     setAssignmentMessage(null);
     setError(null);
 
@@ -107,7 +83,6 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          adminPassword: password,
           assignedOptionId,
         }),
       });
@@ -120,20 +95,13 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
 
       setAssignmentMessage(assignedOptionId === null ? "배정을 해제했습니다." : "배정을 저장했습니다.");
 
-      await refreshDashboard(password);
+      await refreshDashboard();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "배정 상태를 업데이트하지 못했습니다.");
     }
   }
 
   async function deleteResponse(responseId: number) {
-    const password = getAdminPassword(adminToken);
-
-    if (!password) {
-      router.replace(`/admin/${adminToken}`);
-      return;
-    }
-
     setAssignmentMessage(null);
     setError(null);
 
@@ -143,9 +111,6 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          adminPassword: password,
-        }),
       });
 
       const data = (await response.json()) as { error?: string };
@@ -155,20 +120,13 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
       }
 
       setAssignmentMessage("강사 응답을 삭제했습니다.");
-      await refreshDashboard(password);
+      await refreshDashboard();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "응답을 삭제하지 못했습니다.");
     }
   }
 
   async function removeSelectedOption(responseId: number, optionId: number) {
-    const password = getAdminPassword(adminToken);
-
-    if (!password) {
-      router.replace(`/admin/${adminToken}`);
-      return;
-    }
-
     setAssignmentMessage(null);
     setError(null);
 
@@ -178,9 +136,6 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          adminPassword: password,
-        }),
       });
 
       const data = (await response.json()) as { error?: string };
@@ -190,7 +145,7 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
       }
 
       setAssignmentMessage("선택 일정을 제거했습니다.");
-      await refreshDashboard(password);
+      await refreshDashboard();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "선택 일정을 제거하지 못했습니다.");
     }

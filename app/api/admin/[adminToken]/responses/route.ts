@@ -1,6 +1,7 @@
-import { compare } from "bcryptjs";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { getAdminSessionCookieName, verifyAdminSessionToken } from "@/lib/server/auth-session";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { adminTokenParamSchema } from "@/lib/validation/routes";
 import type { AdminAggregate, AdminDashboardData, AdminResponseItem, AdminScheduleOption } from "@/types/admin";
@@ -10,7 +11,6 @@ type AdminScheduleWithResponses = {
   title: string;
   location: string;
   time_info: string;
-  admin_password_hash: string;
   schedule_options: Array<{
     id: number;
     start_at: string;
@@ -29,21 +29,11 @@ type AdminScheduleWithResponses = {
   }> | null;
 };
 
-function getAdminPasswordFromRequest(request: Request) {
-  return request.headers.get("x-admin-password")?.trim() ?? "";
-}
-
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ adminToken: string }> },
 ) {
   try {
-    const adminPassword = getAdminPasswordFromRequest(request);
-
-    if (!adminPassword) {
-      return NextResponse.json({ error: "Admin password header is required" }, { status: 401 });
-    }
-
     const parsedParams = adminTokenParamSchema.safeParse(await params);
 
     if (!parsedParams.success) {
@@ -51,23 +41,23 @@ export async function GET(
     }
 
     const { adminToken } = parsedParams.data;
+    const sessionToken = (await cookies()).get(getAdminSessionCookieName(adminToken))?.value;
+
+    if (!sessionToken || !verifyAdminSessionToken(sessionToken, adminToken)) {
+      return NextResponse.json({ error: "Admin session is required" }, { status: 401 });
+    }
+
     const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
       .from("schedules")
       .select(
-        "id, title, location, time_info, admin_password_hash, schedule_options(id, start_at, end_at, note), responses(id, name, email, phone, comment, assigned_option_id, created_at, response_selected_options(option_id))",
+        "id, title, location, time_info, schedule_options(id, start_at, end_at, note), responses(id, name, email, phone, comment, assigned_option_id, created_at, response_selected_options(option_id))",
       )
       .eq("admin_token", adminToken)
       .single<AdminScheduleWithResponses>();
 
     if (error || !data) {
       return NextResponse.json({ error: "Admin schedule not found" }, { status: 404 });
-    }
-
-    const verified = await compare(adminPassword, data.admin_password_hash);
-
-    if (!verified) {
-      return NextResponse.json({ error: "Incorrect password" }, { status: 401 });
     }
 
     const options: AdminScheduleOption[] = [...(data.schedule_options ?? [])]

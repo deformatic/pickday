@@ -1,6 +1,11 @@
 import { compare } from "bcryptjs";
 import { NextResponse } from "next/server";
 
+import {
+  createScheduleSessionToken,
+  getScheduleSessionCookieName,
+  getSessionCookieOptions,
+} from "@/lib/server/auth-session";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { tokenParamSchema } from "@/lib/validation/routes";
 import { verifySchedulePasswordSchema } from "@/lib/validation/responses";
@@ -57,13 +62,22 @@ export async function POST(
       return NextResponse.json({ error: "Schedule password is not configured" }, { status: 500 });
     }
 
-    const verified = await compare(parsed.data.password, data.access_password_hash);
+    let password = parsed.data.password;
+    const verified = await compare(password, data.access_password_hash);
+    password = "";
 
     if (!verified) {
       return NextResponse.json({ error: "Incorrect password" }, { status: 401 });
     }
 
-    return NextResponse.json({ verified: true });
+    const response = NextResponse.json({ verified: true });
+    response.cookies.set(
+      getScheduleSessionCookieName(token),
+      createScheduleSessionToken(token),
+      getSessionCookieOptions(),
+    );
+
+    return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected server error";
 
