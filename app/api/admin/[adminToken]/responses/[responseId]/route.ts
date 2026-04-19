@@ -9,7 +9,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { responseRouteParamSchema } from "@/lib/validation/routes";
 
 const assignScheduleOptionSchema = z.object({
-  assignedOptionId: z.number().int().positive().nullable(),
+  optionId: z.number().int().positive(),
+  assigned: z.boolean(),
 });
 
 type ResponseOwnerRow = {
@@ -85,34 +86,32 @@ export async function PATCH(
       return NextResponse.json({ error: "Response not found for this schedule" }, { status: 404 });
     }
 
-    if (parsed.data.assignedOptionId !== null) {
-      const { data: option, error: optionError } = await supabase
-        .from("schedule_options")
-        .select("id")
-        .eq("id", parsed.data.assignedOptionId)
-        .eq("schedule_id", schedule.id)
-        .single<{ id: number }>();
+    const { data: option, error: optionError } = await supabase
+      .from("schedule_options")
+      .select("id")
+      .eq("id", parsed.data.optionId)
+      .eq("schedule_id", schedule.id)
+      .single<{ id: number }>();
 
-      if (optionError || !option) {
-        return NextResponse.json({ error: "Assigned option does not belong to this schedule" }, { status: 400 });
-      }
-
-      const { error: clearExistingAssignmentError } = await supabase
-        .from("responses")
-        .update({ assigned_option_id: null })
-        .eq("schedule_id", schedule.id)
-        .eq("assigned_option_id", parsed.data.assignedOptionId)
-        .neq("id", responseId);
-
-      if (clearExistingAssignmentError) {
-        return NextResponse.json({ error: "Failed to clear previous assignment" }, { status: 500 });
-      }
+    if (optionError || !option) {
+      return NextResponse.json({ error: "Assigned option does not belong to this schedule" }, { status: 400 });
     }
 
-    const { error: updateError } = await supabase
-      .from("responses")
-      .update({ assigned_option_id: parsed.data.assignedOptionId })
-      .eq("id", responseId);
+    const assignmentMutation = parsed.data.assigned
+      ? supabase.from("response_assigned_options").upsert(
+          {
+            response_id: responseId,
+            option_id: parsed.data.optionId,
+          },
+          { onConflict: "response_id,option_id", ignoreDuplicates: true },
+        )
+      : supabase
+          .from("response_assigned_options")
+          .delete()
+          .eq("response_id", responseId)
+          .eq("option_id", parsed.data.optionId);
+
+    const { error: updateError } = await assignmentMutation;
 
     if (updateError) {
       return NextResponse.json({ error: "Failed to update assignment" }, { status: 500 });

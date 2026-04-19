@@ -15,13 +15,14 @@ type AdminDashboardProps = {
 type PendingAssignment = {
   responseId: number;
   optionId: number;
-  nextAssignedOptionId: number | null;
+  nextAssigned: boolean;
 };
 
 function applyOptimisticAssignment(
   dashboard: AdminDashboardData,
   responseId: number,
-  assignedOptionId: number | null,
+  optionId: number,
+  assigned: boolean,
 ): AdminDashboardData {
   return {
     ...dashboard,
@@ -29,14 +30,10 @@ function applyOptimisticAssignment(
       if (response.id === responseId) {
         return {
           ...response,
-          assignedOptionId,
-        };
-      }
-
-      if (assignedOptionId !== null && response.assignedOptionId === assignedOptionId) {
-        return {
-          ...response,
-          assignedOptionId: null,
+          assignedOptions: assigned
+            ? [...response.assignedOptions.filter((option) => option.id !== optionId), ...response.selectedOptions.filter((option) => option.id === optionId)]
+                .sort((left, right) => left.startAt.localeCompare(right.startAt))
+            : response.assignedOptions.filter((option) => option.id !== optionId),
         };
       }
 
@@ -106,7 +103,7 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
     };
   }, [adminToken, router]);
 
-  async function assignOption(responseId: number, assignedOptionId: number | null) {
+  async function assignOption(responseId: number, optionId: number, assigned: boolean) {
     if (!dashboard || pendingAssignment) {
       return;
     }
@@ -119,9 +116,7 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
       return;
     }
 
-    const optionId = assignedOptionId ?? currentResponse.assignedOptionId;
-
-    if (optionId === null) {
+    if (!currentResponse.selectedOptions.some((option) => option.id === optionId)) {
       return;
     }
 
@@ -130,9 +125,9 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
     setPendingAssignment({
       responseId,
       optionId,
-      nextAssignedOptionId: assignedOptionId,
+      nextAssigned: assigned,
     });
-    setDashboard(applyOptimisticAssignment(dashboard, responseId, assignedOptionId));
+    setDashboard(applyOptimisticAssignment(dashboard, responseId, optionId, assigned));
 
     try {
       const response = await fetch(`/api/admin/${adminToken}/responses/${responseId}`, {
@@ -141,7 +136,8 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          assignedOptionId,
+          optionId,
+          assigned,
         }),
       });
 
@@ -152,7 +148,7 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
       }
 
       assignmentPersisted = true;
-      setAssignmentMessage(assignedOptionId === null ? "배정을 해제했습니다." : "배정을 저장했습니다.");
+      setAssignmentMessage(assigned ? "배정을 저장했습니다." : "배정을 해제했습니다.");
 
       await refreshDashboard();
     } catch (requestError) {
@@ -297,9 +293,9 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
                         <div className="grid gap-2 text-sm text-stone-700">
                           <div className="flex flex-wrap items-center gap-2">
                             <h3 className="text-lg font-semibold text-stone-950">{response.name}</h3>
-                            {response.assignedOptionId ? (
+                            {response.assignedOptions.length > 0 ? (
                               <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800">
-                                배정 완료
+                                {response.assignedOptions.length}개 배정
                               </span>
                             ) : null}
                             <button
@@ -334,6 +330,23 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
                               </div>
                             )}
                           </div>
+                          <div className="grid gap-2">
+                            <p className="font-medium text-stone-700">배정 일정</p>
+                            {response.assignedOptions.length === 0 ? (
+                              <p className="[word-break:keep-all]">없음</p>
+                            ) : (
+                              <div className="flex flex-wrap gap-2">
+                                {response.assignedOptions.map((option) => (
+                                  <div
+                                    key={`assigned-${option.id}`}
+                                    className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800 shadow-sm"
+                                  >
+                                    <span className="[word-break:keep-all]">{formatScheduleOptionTitle(option)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                           <p>코멘트: {response.comment ?? "없음"}</p>
                         </div>
 
@@ -341,7 +354,7 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
                           <p className="text-sm font-medium text-stone-700">강사 배정</p>
                           <div className="grid gap-2">
                             {dashboard.options.map((option) => {
-                              const isAssigned = response.assignedOptionId === option.id;
+                              const isAssigned = response.assignedOptions.some((assignedOption) => assignedOption.id === option.id);
                               const isPendingTarget =
                                 pendingAssignment?.responseId === response.id && pendingAssignment.optionId === option.id;
                               const isAssignmentLocked = pendingAssignment !== null;
@@ -350,7 +363,7 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
                                 <button
                                   key={option.id}
                                   type="button"
-                                  onClick={() => assignOption(response.id, isAssigned ? null : option.id)}
+                                  onClick={() => assignOption(response.id, option.id, !isAssigned)}
                                   disabled={isAssignmentLocked}
                                   aria-busy={isPendingTarget}
                                   className={`flex items-center justify-between rounded-[1.25rem] border px-4 py-3 text-left text-sm transition ${
@@ -367,9 +380,9 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
                                   </span>
                                   <span className="ml-4 rounded-full border border-current px-3 py-1 text-xs font-medium">
                                     {isPendingTarget
-                                      ? pendingAssignment.nextAssignedOptionId === null
-                                        ? "해제 중..."
-                                        : "저장 중..."
+                                      ? pendingAssignment.nextAssigned
+                                        ? "저장 중..."
+                                        : "해제 중..."
                                       : isAssigned
                                         ? "배정 해제"
                                         : "배정"}

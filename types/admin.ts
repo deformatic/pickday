@@ -11,7 +11,7 @@ export type AdminResponseItem = {
   email: string | null;
   phone: string | null;
   comment: string | null;
-  assignedOptionId: number | null;
+  assignedOptions: AdminScheduleOption[];
   createdAt: string;
   selectedOptions: AdminScheduleOption[];
 };

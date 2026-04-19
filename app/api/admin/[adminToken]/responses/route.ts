@@ -24,9 +24,9 @@ type AdminScheduleWithResponses = {
     email: string | null;
     phone: string | null;
     comment: string | null;
-    assigned_option_id: number | null;
     created_at: string;
     response_selected_options: Array<{ option_id: number }> | null;
+    response_assigned_options: Array<{ option_id: number }> | null;
   }> | null;
 };
 
@@ -63,7 +63,7 @@ export async function GET(
     const { data, error } = await supabase
       .from("schedules")
       .select(
-        "id, title, location, time_info, schedule_options(id, start_at, end_at, note), responses(id, name, email, phone, comment, assigned_option_id, created_at, response_selected_options(option_id))",
+        "id, title, location, time_info, schedule_options(id, start_at, end_at, note), responses(id, name, email, phone, comment, created_at, response_selected_options(option_id), response_assigned_options(option_id))",
       )
       .eq("admin_token", adminToken)
       .single<AdminScheduleWithResponses>();
@@ -88,11 +88,14 @@ export async function GET(
       email: response.email,
       phone: response.phone,
       comment: response.comment,
-      assignedOptionId: response.assigned_option_id,
       createdAt: response.created_at,
       selectedOptions: (response.response_selected_options ?? [])
         .map((item) => optionMap.get(item.option_id))
         .filter((option): option is AdminScheduleOption => option !== undefined),
+      assignedOptions: (response.response_assigned_options ?? [])
+        .map((item) => optionMap.get(item.option_id))
+        .filter((option): option is AdminScheduleOption => option !== undefined)
+        .sort((left, right) => left.startAt.localeCompare(right.startAt)),
     }));
 
     const aggregates: AdminAggregate[] = options
