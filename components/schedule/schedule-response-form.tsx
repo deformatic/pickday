@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { ScheduleOptionCalendar } from "@/components/schedule/schedule-option-calendar";
 import { FounderNudge } from "@/components/ui/founder-nudge";
-import type { PublicSchedule } from "@/types/schedule";
+import type { PublicSchedule, VerifiedScheduleDetails } from "@/types/schedule";
 
 type ScheduleResponseFormProps = {
   token: string;
@@ -19,7 +19,7 @@ type SubmitResult = {
 
 export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
   const router = useRouter();
-  const [schedule, setSchedule] = useState<PublicSchedule | null>(null);
+  const [schedule, setSchedule] = useState<VerifiedScheduleDetails | null>(null);
   const [selectedOptionIds, setSelectedOptionIds] = useState<number[]>([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -38,18 +38,30 @@ export function ScheduleResponseForm({ token }: ScheduleResponseFormProps) {
       setError(null);
 
       try {
-        const response = await fetch(`/api/schedules/${token}`);
-        const data = (await response.json()) as PublicSchedule & { error?: string };
+        const scheduleResponse = await fetch(`/api/schedules/${token}`);
+        const publicData = (await scheduleResponse.json()) as PublicSchedule & { error?: string };
 
-        if (!response.ok) {
-          throw new Error(data.error ?? "일정을 불러오지 못했습니다.");
+        if (!scheduleResponse.ok) {
+          throw new Error(publicData.error ?? "일정을 불러오지 못했습니다.");
+        }
+
+        const detailsResponse = await fetch(`/api/schedules/${token}/details`);
+        const detailsData = (await detailsResponse.json()) as VerifiedScheduleDetails & { error?: string };
+
+        if (!detailsResponse.ok) {
+          if (detailsResponse.status === 401 && publicData.isProtected) {
+            router.replace(`/s/${token}`);
+            return;
+          }
+
+          throw new Error(detailsData.error ?? "일정 상세 정보를 불러오지 못했습니다.");
         }
 
         if (!isMounted) {
           return;
         }
 
-        setSchedule(data);
+        setSchedule(detailsData);
       } catch (requestError) {
         if (!isMounted) {
           return;
