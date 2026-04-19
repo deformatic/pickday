@@ -135,7 +135,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ adminToken: string; responseId: string }> },
 ) {
   try {
