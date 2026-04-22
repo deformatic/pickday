@@ -1,3 +1,5 @@
+import { formatKstDate } from "@/lib/kst-date";
+
 type ScheduleOptionTiming = {
   startAt: string;
   endAt: string;
@@ -5,14 +7,14 @@ type ScheduleOptionTiming = {
 };
 
 function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("ko-KR", {
+  return formatKstDate(value, "ko-KR", {
     year: "numeric",
     month: "long",
     day: "numeric",
     weekday: "short",
     hour: "numeric",
     minute: "2-digit",
-  }).format(new Date(value));
+  });
 }
 
 export function formatScheduleOptionWindow({ startAt, endAt }: ScheduleOptionTiming) {
@@ -20,12 +22,12 @@ export function formatScheduleOptionWindow({ startAt, endAt }: ScheduleOptionTim
 }
 
 export function formatScheduleOptionClockRange({ startAt, endAt }: ScheduleOptionTiming) {
-  const formatter = new Intl.DateTimeFormat("ko-KR", {
+  const formatter = {
     hour: "numeric",
     minute: "2-digit",
-  });
+  } as const;
 
-  return `${formatter.format(new Date(startAt))} ~ ${formatter.format(new Date(endAt))}`;
+  return `${formatKstDate(startAt, "ko-KR", formatter)} ~ ${formatKstDate(endAt, "ko-KR", formatter)}`;
 }
 
 export function formatScheduleOptionTitle({ startAt, endAt, note }: ScheduleOptionTiming) {

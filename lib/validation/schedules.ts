@@ -1,14 +1,16 @@
 import { z } from "zod";
 
+import { parseKstDateTimeLocalToIsoString } from "@/lib/kst-date";
+
 const scheduleOptionSchema = z.object({
   startAt: z
     .string()
     .trim()
     .min(1, "Start time is required")
     .transform((value, ctx) => {
-      const normalized = new Date(value);
+      const normalized = parseKstDateTimeLocalToIsoString(value);
 
-      if (Number.isNaN(normalized.getTime())) {
+      if (!normalized) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Start time must be a valid date-time value",
@@ -17,16 +19,16 @@ const scheduleOptionSchema = z.object({
         return z.NEVER;
       }
 
-      return normalized.toISOString();
+      return normalized;
     }),
   endAt: z
     .string()
     .trim()
     .min(1, "End time is required")
     .transform((value, ctx) => {
-      const normalized = new Date(value);
+      const normalized = parseKstDateTimeLocalToIsoString(value);
 
-      if (Number.isNaN(normalized.getTime())) {
+      if (!normalized) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "End time must be a valid date-time value",
@@ -35,7 +37,7 @@ const scheduleOptionSchema = z.object({
         return z.NEVER;
       }
 
-      return normalized.toISOString();
+      return normalized;
     }),
   note: z.string().trim().max(300).optional().default(""),
 }).superRefine((value, ctx) => {

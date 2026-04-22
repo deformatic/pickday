@@ -1,5 +1,6 @@
 "use client";
 
+import { formatKstDate, getKstDayOfMonth } from "@/lib/kst-date";
 import { buildScheduleCalendarMonths } from "@/lib/schedule-calendar";
 import { formatScheduleOptionClockRange, formatScheduleOptionWindow } from "@/lib/schedule-options";
 import type { ScheduleOption } from "@/types/schedule";
@@ -44,7 +45,7 @@ export function ScheduleOptionCalendar({ options, selectedOptionIds, onToggle }:
                 .map((day) => (
                   <article key={day.date.toISOString()} className="rounded-[1.4rem] border border-stone-200 bg-white p-4 shadow-sm">
                     <p className="text-sm font-semibold text-stone-950">
-                      {new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "short" }).format(day.date)}
+                      {formatKstDate(day.date, "ko-KR", { month: "long", day: "numeric", weekday: "short" })}
                     </p>
                     <div className="mt-3 grid gap-2">
                       {day.items.map((option) => {
@@ -82,7 +83,7 @@ export function ScheduleOptionCalendar({ options, selectedOptionIds, onToggle }:
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className={`text-sm font-semibold ${day.inMonth ? "text-stone-950" : "text-stone-400"}`}>
-                        {day.date.getDate()}
+                        {getKstDayOfMonth(day.date)}
                       </span>
                       {day.items.length > 0 ? (
                         <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-700">

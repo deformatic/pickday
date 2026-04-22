@@ -1,5 +1,6 @@
 "use client";
 
+import { formatKstDate, getKstDayOfMonth } from "@/lib/kst-date";
 import { buildScheduleCalendarMonths } from "@/lib/schedule-calendar";
 import { formatScheduleOptionClockRange, formatScheduleOptionWindow } from "@/lib/schedule-options";
 import type { AdminDashboardData, AdminScheduleOption } from "@/types/admin";
@@ -74,7 +75,7 @@ export function AdminResponseCalendar({ dashboard }: AdminResponseCalendarProps)
                   <article key={day.date.toISOString()} className="rounded-[1.4rem] border border-stone-200 bg-stone-50/80 p-4">
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-sm font-semibold text-stone-950">
-                        {new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "short" }).format(day.date)}
+                        {formatKstDate(day.date, "ko-KR", { month: "long", day: "numeric", weekday: "short" })}
                       </p>
                       <span className="text-xs text-stone-500">{day.items.length}개 일정</span>
                     </div>
@@ -110,7 +111,7 @@ export function AdminResponseCalendar({ dashboard }: AdminResponseCalendarProps)
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className={`text-sm font-semibold ${day.inMonth ? "text-stone-950" : "text-stone-400"}`}>
-                        {day.date.getDate()}
+                        {getKstDayOfMonth(day.date)}
                       </span>
                       {day.items.length > 0 ? (
                         <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-700">

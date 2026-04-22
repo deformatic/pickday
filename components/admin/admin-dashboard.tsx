@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { AdminResponseCalendar } from "@/components/admin/admin-response-calendar";
 import { FounderNudge } from "@/components/ui/founder-nudge";
+import { formatKstDate } from "@/lib/kst-date";
 import { formatScheduleOptionTitle, formatScheduleOptionWindow } from "@/lib/schedule-options";
 import type { AdminDashboardData } from "@/types/admin";
 
@@ -308,7 +309,16 @@ export function AdminDashboard({ adminToken }: AdminDashboardProps) {
                           </div>
                           <p>이메일: {response.email ?? "미입력"}</p>
                           <p>전화번호: {response.phone ?? "미입력"}</p>
-                          <p>제출 시각: {new Date(response.createdAt).toLocaleString("ko-KR")}</p>
+                          <p>
+                            제출 시각: {formatKstDate(response.createdAt, "ko-KR", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                              weekday: "short",
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}
+                          </p>
                           <div className="grid gap-2">
                             <p className="font-medium text-stone-700">선택 일정</p>
                             {response.selectedOptions.length === 0 ? (

@@ -1,6 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+
+import {
+  addKstDays,
+  addKstMonths,
+  endOfKstMonth,
+  formatKstDate,
+  getKstDateKey,
+  getKstDayOfMonth,
+  getKstWeekdayMondayIndex,
+  startOfKstMonth,
+} from "@/lib/kst-date";
 
 type ScheduleOption = {
   id: string;
@@ -46,10 +57,13 @@ function createInitialFormState(): FormState {
 const weekdayLabels = ["월", "화", "수", "목", "금", "토", "일"];
 
 function formatDateKey(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  const dateKey = getKstDateKey(date);
+
+  if (!dateKey) {
+    throw new Error("Failed to format KST date key");
+  }
+
+  return dateKey;
 }
 
 function toDateTimeLocalValue(dateKey: string, hours: number, minutes: number) {
@@ -67,13 +81,26 @@ function createOptionForDate(id: string, dateKey: string): ScheduleOption {
 }
 
 function buildMonthDays(referenceDate: Date) {
-  const monthStart = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1);
-  const monthEnd = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0);
-  const offset = (monthStart.getDay() + 6) % 7;
-  const start = new Date(monthStart);
-  start.setDate(monthStart.getDate() - offset);
-  const end = new Date(monthEnd);
-  end.setDate(monthEnd.getDate() + (6 - ((monthEnd.getDay() + 6) % 7)));
+  const monthStart = startOfKstMonth(referenceDate);
+  const monthEnd = endOfKstMonth(referenceDate);
+
+  if (!monthStart || !monthEnd) {
+    return [] as Array<{ date: Date; inMonth: boolean }>;
+  }
+
+  const startOffset = getKstWeekdayMondayIndex(monthStart);
+  const endOffset = getKstWeekdayMondayIndex(monthEnd);
+
+  if (startOffset === null || endOffset === null) {
+    return [] as Array<{ date: Date; inMonth: boolean }>;
+  }
+
+  const start = addKstDays(monthStart, -startOffset);
+  const end = addKstDays(monthEnd, 6 - endOffset);
+
+  if (!start || !end) {
+    return [] as Array<{ date: Date; inMonth: boolean }>;
+  }
 
   const days: Array<{ date: Date; inMonth: boolean }> = [];
   const cursor = new Date(start);
@@ -81,25 +108,13 @@ function buildMonthDays(referenceDate: Date) {
   while (cursor <= end) {
     days.push({
       date: new Date(cursor),
-      inMonth: cursor.getMonth() === referenceDate.getMonth(),
+      inMonth: formatKstDate(cursor, "ko-KR", { year: "numeric", month: "numeric" })
+        === formatKstDate(referenceDate, "ko-KR", { year: "numeric", month: "numeric" }),
     });
-    cursor.setDate(cursor.getDate() + 1);
+    cursor.setTime(cursor.getTime() + 24 * 60 * 60 * 1000);
   }
 
   return days;
-}
-
-function PlusIcon() {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className="h-4 w-4">
-      <path
-        d="M10 4.166v11.668M4.166 10h11.668"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
 }
 
 function ShieldIcon() {
@@ -207,17 +222,11 @@ export function NewScheduleForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
+    return startOfKstMonth(now) ?? now;
   });
 
   const optionCountLabel = useMemo(() => `${form.options.length}개 일정 후보`, [form.options.length]);
   const monthDays = useMemo(() => buildMonthDays(visibleMonth), [visibleMonth]);
-
-  useEffect(() => {
-    if (form.options.length === 0) {
-      setError((current) => current);
-    }
-  }, [form.options.length]);
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -386,17 +395,17 @@ export function NewScheduleForm() {
               <div className="flex items-center justify-between gap-3">
                 <button
                   type="button"
-                  onClick={() => setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}
+                  onClick={() => setVisibleMonth((current) => addKstMonths(current, -1) ?? current)}
                   className="inline-flex h-10 items-center justify-center rounded-full border border-stone-300 px-3 text-sm font-medium text-stone-700 transition hover:border-stone-950 hover:text-stone-950"
                 >
                   이전 달
                 </button>
                 <p className="text-sm font-semibold text-stone-950">
-                  {new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long" }).format(visibleMonth)}
+                  {formatKstDate(visibleMonth, "ko-KR", { year: "numeric", month: "long" })}
                 </p>
                 <button
                   type="button"
-                  onClick={() => setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}
+                  onClick={() => setVisibleMonth((current) => addKstMonths(current, 1) ?? current)}
                   className="inline-flex h-10 items-center justify-center rounded-full border border-stone-300 px-3 text-sm font-medium text-stone-700 transition hover:border-stone-950 hover:text-stone-950"
                 >
                   다음 달
@@ -427,7 +436,7 @@ export function NewScheduleForm() {
                             : "border-stone-200 bg-stone-100/70 text-stone-400"
                       }`}
                     >
-                      <span className="block text-sm font-semibold">{date.getDate()}</span>
+                      <span className="block text-sm font-semibold">{getKstDayOfMonth(date)}</span>
                       {isSelected ? (
                         <span className="mt-2 block text-[11px] leading-4 text-stone-300">추가됨</span>
                       ) : null}
@@ -454,7 +463,7 @@ export function NewScheduleForm() {
                     <div>
                       <p className="text-sm font-semibold text-stone-950">후보 {index + 1}</p>
                       <p className="mt-1 text-xs text-stone-500">
-                        {new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "short" }).format(new Date(option.startAt))}
+                        {formatKstDate(option.startAt, "ko-KR", { month: "long", day: "numeric", weekday: "short" })}
                       </p>
                     </div>
                     <span className="rounded-full bg-stone-100 px-3 py-1 text-[11px] font-medium text-stone-700">
